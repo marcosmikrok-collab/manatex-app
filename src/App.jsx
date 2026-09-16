@@ -44,7 +44,22 @@ export default function App() {
       if (session) fetchUserProfile(session.user.id)
       else setProfile(null)
     })
+// Função para formatar Moeda (R$ 73,56)
+const formatMoeda = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return '-';
+  // Se vier como string (texto), converte trocando ponto por número
+  const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor);
+  if (isNaN(num)) return '-';
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
 
+// Função para formatar Medidas/Decimais (1,75 / 8,33)
+const formatNumero = (valor, sufixo = '') => {
+  if (valor === null || valor === undefined || valor === '') return '-';
+  const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor);
+  if (isNaN(num)) return '-';
+  return `${num.toLocaleString('pt-BR')}${sufixo}`;
+};
     return () => subscription.unsubscribe()
   }, [])
 
