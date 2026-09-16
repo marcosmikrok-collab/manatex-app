@@ -80,27 +80,30 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Buscar perfil do usuário logado
-  const fetchUserProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
+  // 1. Buscar perfil do usuário logado
+const fetchUserProfile = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle()
 
-      if (error) {
-        console.error('Erro ao buscar perfil:', error)
-        return
-      }
-
-      if (data) {
-        setProfile(data)
-      }
-    } catch (err) {
-      console.error('Erro inesperado:', err)
+    if (error) {
+      console.error('Erro ao buscar perfil:', error)
+      return
     }
+
+    if (data) {
+      setProfile(data)
+    } else {
+      // Caso a trigger de criacao de perfil no Supabase falhe ou nao exista
+      setProfile({ id: userId, role: 'user', approved: true })
+    }
+  } catch (err) {
+    console.error('Erro inesperado:', err)
   }
+}
 
   // Buscar Produtos (Filtrado por Marca se selecionada)
   const fetchProducts = async () => {
