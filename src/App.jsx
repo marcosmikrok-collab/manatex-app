@@ -47,7 +47,7 @@ export default function App() {
     largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: ''
   })
 
-  // Helper para converter qualquer entrada do Excel em decimal correto
+  // Helper para converter qualquer entrada em decimal correto
   const parseInputValue = (val) => {
     if (val === null || val === undefined || val === '') return null
     if (typeof val === 'number') return parseFloat(val.toFixed(2))
@@ -160,7 +160,6 @@ export default function App() {
 
   // --- Exportar para Excel ---
   const handleExportExcel = async () => {
-    // Carrega a biblioteca XLSX dinamicamente caso ainda não esteja carregada no window
     if (!window.XLSX) {
       await new Promise((resolve, reject) => {
         const script = document.createElement('script')
@@ -177,10 +176,10 @@ export default function App() {
       'À Prazo': p.a_prazo !== null && p.a_prazo !== undefined ? p.a_prazo : '',
       'Valor M': p.valor_m !== null && p.valor_m !== undefined ? p.valor_m : '',
       'Valor M²': p.valor_m2 !== null && p.valor_m2 !== undefined ? p.valor_m2 : '',
-      'Largura (m)': p.largura !== null && p.largura !== undefined ? p.largura : '',
-      'Gramatura (g)': p.gramatura !== null && p.gramatura !== undefined ? p.gramatura : '',
-      'Rendimento M': p.rendimento_m !== null && p.rendimento_m !== undefined ? p.rendimento_m : '',
-      'Rendimento M²': p.rendimento_m2 !== null && p.rendimento_m2 !== undefined ? p.rendimento_m2 : '',
+      'Largura (m)': p.largura !== null && p.largura !== undefined ? `${p.largura}m` : '',
+      'Gramatura (g)': p.gramatura !== null && p.gramatura !== undefined ? `${p.gramatura}g` : '',
+      'Rendimento M': p.rendimento_m !== null && p.rendimento_m !== undefined ? `${p.rendimento_m}m` : '',
+      'Rendimento M²': p.rendimento_m2 !== null && p.rendimento_m2 !== undefined ? `${p.rendimento_m2}m²` : '',
       'Composição': p.composicao || ''
     }))
 
@@ -188,7 +187,6 @@ export default function App() {
     const workbook = window.XLSX.utils.book_new()
     window.XLSX.utils.book_append_sheet(workbook, worksheet, selectedBrand?.toUpperCase() || 'Produtos')
 
-    // Ajusta a largura das colunas automaticamente
     const fitToColumn = Object.keys(dataToExport[0] || {}).map((key) => ({
       wch: Math.max(key.length + 5, 15)
     }))
@@ -546,8 +544,8 @@ export default function App() {
                         <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m2)}</td>
                         <td style={{ padding: '12px' }}>{formatNumero(p.largura, 'm')}</td>
                         <td style={{ padding: '12px' }}>{formatNumero(p.gramatura, 'g')}</td>
-                        <td style={{ padding: '12px' }}>{formatNumero(p.rendimento_m)}</td>
-                        <td style={{ padding: '12px' }}>{formatNumero(p.rendimento_m2)}</td>
+                        <td style={{ padding: '12px' }}>{formatNumero(p.rendimento_m, 'm')}</td>
+                        <td style={{ padding: '12px' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
                         <td style={{ padding: '12px', fontSize: '13px' }}>{p.composicao}</td>
                         {profile?.role === 'admin' && (
                           <td style={{ padding: '12px', textAlign: 'center' }}>
@@ -616,11 +614,11 @@ export default function App() {
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M (m)</label>
                   <input type="text" value={formData.rendimento_m} onChange={e => setFormData({...formData, rendimento_m: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M²</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M² (m²)</label>
                   <input type="text" value={formData.rendimento_m2} onChange={e => setFormData({...formData, rendimento_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
