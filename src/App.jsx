@@ -237,8 +237,62 @@ export default function App() {
   )
 
   // Configuração das Cores do Tema
-  const isManatex = selectedBrand === 'manatex'
-  const brandColor = isManatex ? '#059669' : '#dc2626' // Verde Manatex x Vermelho MSports
+const isManatex = selectedBrand === 'manatex'
+const brandColor = isManatex ? '#059669' : '#dc2626' // Verde Manatex x Vermelho MSports
+const headerBg = isManatex ? '#059669' : '#111827'   // Verde no Manatex x Escuro no MSports
+
+return (
+  <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px' }}>
+    
+    {/* HEADER COM COR INVERTIDA */}
+    <header style={{ backgroundColor: headerBg, color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+        {selectedBrand && (
+          <button 
+            onClick={() => setSelectedBrand(null)} 
+            title="Voltar para seleção de marcas"
+            style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <ArrowLeft size={20} />
+          </button>
+        )}
+        <div>
+          <h1 style={{ margin: 0, fontSize: '20px' }}>
+            {activeTab === 'users' ? 'Gerenciamento de Usuários' : `Tabela ${selectedBrand?.toUpperCase()}`}
+          </h1>
+          <span style={{ fontSize: '12px', opacity: 0.9 }}>
+            Nível: <strong>{profile?.role === 'admin' ? 'Administrador' : 'Usuário'}</strong>
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '10px' }}>
+        {profile?.role === 'admin' && (
+          <>
+            {selectedBrand && (
+              <button 
+                onClick={() => setActiveTab('products')} 
+                style={{ backgroundColor: activeTab === 'products' ? brandColor : 'transparent', color: 'white', border: `1px solid ${brandColor}`, padding: '8px 12px', borderRadius: '6px', cursor: 'pointer' }}>
+                Produtos
+              </button>
+            )}
+            <button 
+              onClick={() => setActiveTab('users')} 
+              style={{ backgroundColor: activeTab === 'users' ? brandColor : 'transparent', color: 'white', border: `1px solid ${brandColor}`, padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Users size={16} /> Usuários
+            </button>
+            {activeTab === 'products' && selectedBrand && (
+              <button onClick={() => openModal()} style={{ backgroundColor: brandColor, color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Plus size={16} /> Novo Produto ({selectedBrand.toUpperCase()})
+              </button>
+            )}
+          </>
+        )}
+
+        <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <LogOut size={16} /> Sair
+        </button>
+      </div>
+    </header>
 
   // 1. TELA DE LOGIN / CADASTRO
   if (!session) {
