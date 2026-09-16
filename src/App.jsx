@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, Package, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Layers } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, Package, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download } from 'lucide-react'
 
 // Funções para formatar valores no padrão brasileiro (com vírgula)
 const formatMoeda = (valor) => {
@@ -158,6 +158,46 @@ export default function App() {
     supabase.auth.signOut()
   }
 
+  // --- Exportar para Excel ---
+  const handleExportExcel = async () => {
+    // Carrega a biblioteca XLSX dinamicamente caso ainda não esteja carregada no window
+    if (!window.XLSX) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = 'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js'
+        script.onload = resolve
+        script.onerror = reject
+        document.head.appendChild(script)
+      })
+    }
+
+    const dataToExport = filteredProducts.map((p) => ({
+      'Produto': p.nome || '',
+      'À Vista': p.a_vista !== null && p.a_vista !== undefined ? p.a_vista : '',
+      'À Prazo': p.a_prazo !== null && p.a_prazo !== undefined ? p.a_prazo : '',
+      'Valor M': p.valor_m !== null && p.valor_m !== undefined ? p.valor_m : '',
+      'Valor M²': p.valor_m2 !== null && p.valor_m2 !== undefined ? p.valor_m2 : '',
+      'Largura (m)': p.largura !== null && p.largura !== undefined ? p.largura : '',
+      'Gramatura (g)': p.gramatura !== null && p.gramatura !== undefined ? p.gramatura : '',
+      'Rendimento M': p.rendimento_m !== null && p.rendimento_m !== undefined ? p.rendimento_m : '',
+      'Rendimento M²': p.rendimento_m2 !== null && p.rendimento_m2 !== undefined ? p.rendimento_m2 : '',
+      'Composição': p.composicao || ''
+    }))
+
+    const worksheet = window.XLSX.utils.json_to_sheet(dataToExport)
+    const workbook = window.XLSX.utils.book_new()
+    window.XLSX.utils.book_append_sheet(workbook, worksheet, selectedBrand?.toUpperCase() || 'Produtos')
+
+    // Ajusta a largura das colunas automaticamente
+    const fitToColumn = Object.keys(dataToExport[0] || {}).map((key) => ({
+      wch: Math.max(key.length + 5, 15)
+    }))
+    worksheet['!cols'] = fitToColumn
+
+    const dataHoje = new Date().toISOString().split('T')[0]
+    window.XLSX.writeFile(workbook, `Tabela_${selectedBrand?.toUpperCase()}_${dataHoje}.xlsx`)
+  }
+
   // --- Ações do Admin em Usuários ---
   const toggleApproval = async (userId, currentStatus) => {
     await supabase.from('profiles').update({ approved: !currentStatus }).eq('id', userId)
@@ -236,8 +276,6 @@ export default function App() {
     p.composicao?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Configuração das Cores do Tema Principal:
-  // Verde para Manatex (#059669) e Preto/Escuro para MSports (#111827)
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827' 
 
@@ -296,7 +334,7 @@ export default function App() {
     )
   }
 
-  // 3. SELEÇÃO DE MARCA (MANATEX OU MSPORTS)
+  // 3. SELEÇÃO DE MARCA
   if (!selectedBrand && activeTab !== 'users') {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -323,23 +361,19 @@ export default function App() {
 
         <h2 style={{ color: '#1e293b', marginBottom: '30px' }}>Qual tabela de produtos deseja acessar?</h2>
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px', width: '100%' }}>
-          
-          {/* CARD MANATEX */}
           <div 
             onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }}
-            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <img src="/mana.jpg" alt="Manatex Têxtil" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px' }} />
             <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos Manatex</p>
           </div>
 
-          {/* CARD MSPORTS */}
           <div 
             onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }}
-            style={{ flex: '1 1 300px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ flex: '1 1 300px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px', backgroundColor: 'white', padding: '5px', borderRadius: '4px' }} />
             <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos MSports</p>
           </div>
-
         </div>
       </div>
     )
@@ -449,7 +483,7 @@ export default function App() {
       ) : (
         /* ABA DE PRODUTOS */
         <>
-          <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
               <Search size={18} style={{ position: 'absolute', left: '10px', top: '12px', color: '#888' }} />
               <input
@@ -460,11 +494,19 @@ export default function App() {
                 style={{ width: '100%', padding: '10px 10px 10px 35px', borderRadius: '6px', border: '1px solid #ccc', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
-            <button 
-              onClick={() => setSelectedBrand(null)} 
-              style={{ backgroundColor: '#e2e8f0', color: '#334155', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-              Trocar Marca
-            </button>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={handleExportExcel}
+                style={{ backgroundColor: '#16a34a', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Download size={16} /> Exportar Excel
+              </button>
+              <button 
+                onClick={() => setSelectedBrand(null)} 
+                style={{ backgroundColor: '#e2e8f0', color: '#334155', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                Trocar Marca
+              </button>
+            </div>
           </div>
 
           {loading ? (
