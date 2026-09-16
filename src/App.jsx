@@ -2,6 +2,22 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { Search, Plus, Edit2, Trash2, Package, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Layers } from 'lucide-react'
 
+// Formata valores monetários para o padrão brasileiro (R$ 73,56)
+const formatMoeda = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return '-';
+  const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor);
+  if (isNaN(num)) return '-';
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+
+// Formata medidas e decimais para o padrão brasileiro (1,75m)
+const formatNumero = (valor, sufixo = '') => {
+  if (valor === null || valor === undefined || valor === '') return '-';
+  const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor);
+  if (isNaN(num)) return '-';
+  return `${num.toLocaleString('pt-BR')}${sufixo}`;
+};
+
 export default function App() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
