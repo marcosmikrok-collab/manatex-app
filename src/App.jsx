@@ -47,14 +47,25 @@ export default function App() {
     largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: ''
   })
 
-  // Helper para converter string com vírgula digitada pelo usuário em número válido para o banco
-  const parseInputValue = (val) => {
-    if (!val) return null
-    if (typeof val === 'number') return val
-    const cleanStr = val.toString().replace(',', '.')
-    const parsed = parseFloat(cleanStr)
-    return isNaN(parsed) ? null : parsed
+  // Helper para converter qualquer entrada do Excel (77,9736 ou 77.97) em decimal correto
+const parseInputValue = (val) => {
+  if (val === null || val === undefined || val === '') return null
+  if (typeof val === 'number') return parseFloat(val.toFixed(2))
+
+  let strVal = val.toString().trim()
+
+  // Se o Excel veio no formato brasileiro com vírgula (ex: 77,9736 ou 1.234,56)
+  if (strVal.includes(',')) {
+    // Remove pontos que possam ser separadores de milhar e troca a vírgula decimal por ponto
+    strVal = strVal.replace(/\./g, '').replace(',', '.')
   }
+
+  const parsed = parseFloat(strVal)
+  if (isNaN(parsed)) return null
+
+  // Arredonda para 2 casas decimais para evitar dízimas ou casas extras do Excel
+  return Math.round(parsed * 100) / 100
+}
 
   // 1. Monitorar Autenticação e Perfil
   useEffect(() => {
