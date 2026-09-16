@@ -161,6 +161,89 @@ const fetchUserProfile = async (userId) => {
     supabase.auth.signOut()
   }
 
+  // Adicione estes novos estados no topo do seu componente App
+const [resetEmailSent, setResetEmailSent] = useState(false)
+const [isResettingPassword, setIsResettingPassword] = useState(false)
+const [newPassword, setNewPassword] = useState('')
+
+// 1. Escutar evento de recuperação de senha vindo do e-mail
+useEffect(() => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      setIsResettingPassword(true)
+    }
+  })
+  return () => subscription.unsubscribe()
+}, [])
+
+// 2. Enviar e-mail de redefinição de senha
+const handleSendResetEmail = async (e) => {
+  e.preventDefault()
+  setAuthError('')
+  setAuthMessage('')
+
+  if (!email) {
+    setAuthError('Por favor, informe seu e-mail.')
+    return
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin // Redireciona de volta para a sua aplicação
+  })
+
+  if (error) {
+    setAuthError(error.message)
+  } else {
+    setResetEmailSent(true)
+    setAuthMessage('E-mail de redefinição enviado! Verifique sua caixa de entrada.')
+  }
+}
+
+// 3. Salvar a nova senha digitada
+const handleUpdatePassword = async (e) => {
+  e.preventDefault()
+  setAuthError('')
+  setAuthMessage('')
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+
+  if (error) {
+    setAuthError(error.message)
+  } else {
+    alert('Senha alterada com sucesso!')
+    setIsResettingPassword(false)
+    setNewPassword('')
+  }
+}
+
+  if (isResettingPassword) {
+  return (
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <form onSubmit={handleUpdatePassword} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
+        <h2 style={{ textAlign: 'center', color: '#1e293b', marginBottom: '20px' }}>Criar Nova Senha</h2>
+        
+        {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
+        
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Nova Senha</label>
+          <input 
+            type="password" 
+            required 
+            value={newPassword} 
+            onChange={e => setNewPassword(e.target.value)} 
+            style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} 
+            placeholder="Mínimo 6 caracteres" 
+          />
+        </div>
+
+        <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+          Salvar Nova Senha
+        </button>
+      </form>
+    </div>
+  )
+}
+
   // --- Exportar para Excel ---
   const handleExportExcel = async () => {
     if (!window.XLSX) {
@@ -314,6 +397,15 @@ const fetchUserProfile = async (userId) => {
           </div>
         </form>
       </div>
+
+      <div style={{ textAlign: 'right', marginTop: '5px', marginBottom: '15px' }}>
+  <button 
+    type="button" 
+    onClick={handleSendResetEmail} 
+    style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline' }}>
+    Esqueci minha senha
+  </button>
+</div>
     )
   }
 
