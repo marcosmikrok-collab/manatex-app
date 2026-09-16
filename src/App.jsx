@@ -482,48 +482,32 @@ const formatNumero = (valor, sufixo = '') => {
   <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
     <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.nome}</td>
     
-    {/* Preços com R$ e Vírgula (ex: R$ 73,56) */}
+    {/* Preços com R$ e Vírgula */}
     <td style={{ padding: '12px', color: brandColor, fontWeight: 'bold' }}>
-      {p.a_vista !== null && p.a_vista !== undefined 
-        ? p.a_vista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
-        : '-'}
+      {formatMoeda(p.a_vista)}
     </td>
     <td style={{ padding: '12px' }}>
-      {p.a_prazo !== null && p.a_prazo !== undefined 
-        ? p.a_prazo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
-        : '-'}
+      {formatMoeda(p.a_prazo)}
     </td>
     <td style={{ padding: '12px' }}>
-      {p.valor_m !== null && p.valor_m !== undefined 
-        ? p.valor_m.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
-        : '-'}
+      {formatMoeda(p.valor_m)}
     </td>
     <td style={{ padding: '12px' }}>
-      {p.valor_m2 !== null && p.valor_m2 !== undefined 
-        ? p.valor_m2.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
-        : '-'}
+      {formatMoeda(p.valor_m2)}
     </td>
 
-    {/* Medidas com vírgula para decimais (ex: 1,75m / 8,33) */}
+    {/* Medidas com Vírgula */}
     <td style={{ padding: '12px' }}>
-      {p.largura !== null && p.largura !== undefined 
-        ? `${p.largura.toLocaleString('pt-BR')}m` 
-        : '-'}
+      {formatNumero(p.largura, 'm')}
     </td>
     <td style={{ padding: '12px' }}>
-      {p.gramatura !== null && p.gramatura !== undefined 
-        ? `${p.gramatura.toLocaleString('pt-BR')}g` 
-        : '-'}
+      {formatNumero(p.gramatura, 'g')}
     </td>
     <td style={{ padding: '12px' }}>
-      {p.rendimento_m !== null && p.rendimento_m !== undefined 
-        ? p.rendimento_m.toLocaleString('pt-BR') 
-        : '-'}
+      {formatNumero(p.rendimento_m)}
     </td>
     <td style={{ padding: '12px' }}>
-      {p.rendimento_m2 !== null && p.rendimento_m2 !== undefined 
-        ? p.rendimento_m2.toLocaleString('pt-BR') 
-        : '-'}
+      {formatNumero(p.rendimento_m2)}
     </td>
 
     <td style={{ padding: '12px', fontSize: '13px' }}>{p.composicao}</td>
