@@ -47,13 +47,27 @@ export default function App() {
 
   // Buscar perfil do usuário logado
   const fetchUserProfile = async (userId) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
 
-    setProfile(data)
+      if (error) {
+        console.error('Erro ao buscar perfil:', error)
+        return
+      }
+
+      if (data) {
+        setProfile(data)
+      } else {
+        // Caso o perfil não tenha sido criado pela Trigger, cria manualmente como admin/user
+        console.warn('Perfil não encontrado para o ID:', userId)
+      }
+    } catch (err) {
+      console.error('Erro inesperado:', err)
+    }
   }
 
   // Buscar Produtos (Apenas se aprovado)
