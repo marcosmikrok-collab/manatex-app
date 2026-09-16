@@ -2,21 +2,20 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { Search, Plus, Edit2, Trash2, Package, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Layers } from 'lucide-react'
 
-// Formata valores monetários para o padrão brasileiro (R$ 73,56)
+// Funções para formatar valores no padrão brasileiro (com vírgula)
 const formatMoeda = (valor) => {
-  if (valor === null || valor === undefined || valor === '') return '-';
-  const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor);
-  if (isNaN(num)) return '-';
-  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-};
+  if (valor === null || valor === undefined || valor === '') return '-'
+  const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor)
+  if (isNaN(num)) return '-'
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
 
-// Formata medidas e decimais para o padrão brasileiro (1,75m)
 const formatNumero = (valor, sufixo = '') => {
-  if (valor === null || valor === undefined || valor === '') return '-';
-  const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor);
-  if (isNaN(num)) return '-';
-  return `${num.toLocaleString('pt-BR')}${sufixo}`;
-};
+  if (valor === null || valor === undefined || valor === '') return '-'
+  const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor)
+  if (isNaN(num)) return '-'
+  return `${num.toLocaleString('pt-BR')}${sufixo}`
+}
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -47,6 +46,15 @@ export default function App() {
     nome: '', a_vista: '', a_prazo: '', valor_m: '', valor_m2: '',
     largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: ''
   })
+
+  // Helper para converter string com vírgula digitada pelo usuário em número válido para o banco
+  const parseInputValue = (val) => {
+    if (!val) return null
+    if (typeof val === 'number') return val
+    const cleanStr = val.toString().replace(',', '.')
+    const parsed = parseFloat(cleanStr)
+    return isNaN(parsed) ? null : parsed
+  }
 
   // 1. Monitorar Autenticação e Perfil
   useEffect(() => {
@@ -160,14 +168,14 @@ export default function App() {
     const payload = {
       nome: formData.nome,
       marca: selectedBrand, // Associa à marca selecionada atualmente
-      a_vista: formData.a_vista ? parseFloat(formData.a_vista) : null,
-      a_prazo: formData.a_prazo ? parseFloat(formData.a_prazo) : null,
-      valor_m: formData.valor_m ? parseFloat(formData.valor_m) : null,
-      valor_m2: formData.valor_m2 ? parseFloat(formData.valor_m2) : null,
-      largura: formData.largura ? parseFloat(formData.largura) : null,
-      gramatura: formData.gramatura ? parseFloat(formData.gramatura) : null,
-      rendimento_m: formData.rendimento_m ? parseFloat(formData.rendimento_m) : null,
-      rendimento_m2: formData.rendimento_m2 ? parseFloat(formData.rendimento_m2) : null,
+      a_vista: parseInputValue(formData.a_vista),
+      a_prazo: parseInputValue(formData.a_prazo),
+      valor_m: parseInputValue(formData.valor_m),
+      valor_m2: parseInputValue(formData.valor_m2),
+      largura: parseInputValue(formData.largura),
+      gramatura: parseInputValue(formData.gramatura),
+      rendimento_m: parseInputValue(formData.rendimento_m),
+      rendimento_m2: parseInputValue(formData.rendimento_m2),
       composicao: formData.composicao
     }
 
@@ -192,10 +200,16 @@ export default function App() {
     if (product) {
       setEditingId(product.id)
       setFormData({
-        nome: product.nome || '', a_vista: product.a_vista || '', a_prazo: product.a_prazo || '',
-        valor_m: product.valor_m || '', valor_m2: product.valor_m2 || '', largura: product.largura || '',
-        gramatura: product.gramatura || '', rendimento_m: product.rendimento_m || '',
-        rendimento_m2: product.rendimento_m2 || '', composicao: product.composicao || ''
+        nome: product.nome || '',
+        a_vista: product.a_vista !== null && product.a_vista !== undefined ? String(product.a_vista).replace('.', ',') : '',
+        a_prazo: product.a_prazo !== null && product.a_prazo !== undefined ? String(product.a_prazo).replace('.', ',') : '',
+        valor_m: product.valor_m !== null && product.valor_m !== undefined ? String(product.valor_m).replace('.', ',') : '',
+        valor_m2: product.valor_m2 !== null && product.valor_m2 !== undefined ? String(product.valor_m2).replace('.', ',') : '',
+        largura: product.largura !== null && product.largura !== undefined ? String(product.largura).replace('.', ',') : '',
+        gramatura: product.gramatura !== null && product.gramatura !== undefined ? String(product.gramatura).replace('.', ',') : '',
+        rendimento_m: product.rendimento_m !== null && product.rendimento_m !== undefined ? String(product.rendimento_m).replace('.', ',') : '',
+        rendimento_m2: product.rendimento_m2 !== null && product.rendimento_m2 !== undefined ? String(product.rendimento_m2).replace('.', ',') : '',
+        composicao: product.composicao || ''
       })
     } else {
       setEditingId(null)
@@ -482,14 +496,14 @@ export default function App() {
                     filteredProducts.map((p) => (
                       <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.nome}</td>
-                        <td style={{ padding: '12px', color: brandColor, fontWeight: 'bold' }}>R$ {Number(p.a_vista || 0).toFixed(2)}</td>
-                        <td style={{ padding: '12px' }}>R$ {Number(p.a_prazo || 0).toFixed(2)}</td>
-                        <td style={{ padding: '12px' }}>R$ {Number(p.valor_m || 0).toFixed(2)}</td>
-                        <td style={{ padding: '12px' }}>R$ {Number(p.valor_m2 || 0).toFixed(2)}</td>
-                        <td style={{ padding: '12px' }}>{p.largura}m</td>
-                        <td style={{ padding: '12px' }}>{p.gramatura}g</td>
-                        <td style={{ padding: '12px' }}>{p.rendimento_m}</td>
-                        <td style={{ padding: '12px' }}>{p.rendimento_m2}</td>
+                        <td style={{ padding: '12px', color: brandColor, fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
+                        <td style={{ padding: '12px' }}>{formatMoeda(p.a_prazo)}</td>
+                        <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m)}</td>
+                        <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m2)}</td>
+                        <td style={{ padding: '12px' }}>{formatNumero(p.largura, 'm')}</td>
+                        <td style={{ padding: '12px' }}>{formatNumero(p.gramatura, 'g')}</td>
+                        <td style={{ padding: '12px' }}>{formatNumero(p.rendimento_m)}</td>
+                        <td style={{ padding: '12px' }}>{formatNumero(p.rendimento_m2)}</td>
                         <td style={{ padding: '12px', fontSize: '13px' }}>{p.composicao}</td>
                         {profile?.role === 'admin' && (
                           <td style={{ padding: '12px', textAlign: 'center' }}>
@@ -529,41 +543,41 @@ export default function App() {
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Vista (R$)</label>
-                  <input type="number" step="0.01" value={formData.a_vista} onChange={e => setFormData({...formData, a_vista: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.a_vista} onChange={e => setFormData({...formData, a_vista: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Prazo (R$)</label>
-                  <input type="number" step="0.01" value={formData.a_prazo} onChange={e => setFormData({...formData, a_prazo: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.a_prazo} onChange={e => setFormData({...formData, a_prazo: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Valor M (R$)</label>
-                  <input type="number" step="0.01" value={formData.valor_m} onChange={e => setFormData({...formData, valor_m: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.valor_m} onChange={e => setFormData({...formData, valor_m: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Valor M² (R$)</label>
-                  <input type="number" step="0.01" value={formData.valor_m2} onChange={e => setFormData({...formData, valor_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.valor_m2} onChange={e => setFormData({...formData, valor_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Largura (m)</label>
-                  <input type="number" step="0.01" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Gramatura (g)</label>
-                  <input type="number" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0" />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M</label>
-                  <input type="number" step="0.01" value={formData.rendimento_m} onChange={e => setFormData({...formData, rendimento_m: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.rendimento_m} onChange={e => setFormData({...formData, rendimento_m: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M²</label>
-                  <input type="number" step="0.01" value={formData.rendimento_m2} onChange={e => setFormData({...formData, rendimento_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.rendimento_m2} onChange={e => setFormData({...formData, rendimento_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
               <div>
