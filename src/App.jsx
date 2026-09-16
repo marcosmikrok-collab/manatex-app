@@ -70,22 +70,30 @@ export default function App() {
 
   // 1. Monitorar Autenticação e Perfil
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      if (session) fetchUserProfile(session.user.id)
-    })
+  // 1. Captura o parâmetro do link enviado por e-mail antes do render
+  const hash = window.location.hash
+  if (hash && hash.includes('type=recovery')) {
+    setIsResettingPassword(true)
+  }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session)
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsResettingPassword(true)
-      }
-      if (session) fetchUserProfile(session.user.id)
-      else setProfile(null)
-    })
+  // 2. Busca a sessão atual
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    setSession(session)
+    if (session) fetchUserProfile(session.user.id)
+  })
 
-    return () => subscription.unsubscribe()
-  }, [])
+  // 3. Ouve as mudanças no estado de autenticação
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    setSession(session)
+    if (event === 'PASSWORD_RECOVERY') {
+      setIsResettingPassword(true)
+    }
+    if (session) fetchUserProfile(session.user.id)
+    else setProfile(null)
+  })
+
+  return () => subscription.unsubscribe()
+}, [])
 
   // Buscar perfil do usuário logado
   const fetchUserProfile = async (userId) => {
@@ -180,21 +188,22 @@ export default function App() {
   }
 
   // Atualizar senha com o link do e-mail
-  const handleUpdatePassword = async (e) => {
-    e.preventDefault()
-    setAuthError('')
-    setAuthMessage('')
+ const handleUpdatePassword = async (e) => {
+  e.preventDefault()
+  setAuthError('')
+  setAuthMessage('')
 
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
 
-    if (error) {
-      setAuthError('Erro ao redefinir a senha: ' + error.message)
-    } else {
-      setAuthMessage('Senha alterada com sucesso!')
-      setIsResettingPassword(false)
-      setNewPassword('')
-    }
+  if (error) {
+    setAuthError('Erro ao redefinir a senha: ' + error.message)
+  } else {
+    alert('Senha alterada com sucesso!')
+    window.location.hash = '' // Limpa o token da URL
+    setIsResettingPassword(false)
+    setNewPassword('')
   }
+}
 
   const handleLogout = () => {
     setSelectedBrand(null)
