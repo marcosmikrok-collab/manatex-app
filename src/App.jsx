@@ -47,7 +47,7 @@ export default function App() {
     largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: ''
   })
 
-  // Helper para converter qualquer entrada do Excel (77,9736 ou 77.97) em decimal correto
+  // Helper para converter qualquer entrada do Excel em decimal correto
   const parseInputValue = (val) => {
     if (val === null || val === undefined || val === '') return null
     if (typeof val === 'number') return parseFloat(val.toFixed(2))
@@ -236,9 +236,10 @@ export default function App() {
     p.composicao?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Configuração das Cores do Tema
+  // Configuração das Cores do Tema Principal:
+  // Verde para Manatex (#059669) e Preto/Escuro para MSports (#111827)
   const isManatex = selectedBrand === 'manatex'
-  const brandColor = isManatex ? '#059669' : '#dc2626' // Verde Manatex x Vermelho MSports
+  const brandColor = isManatex ? '#059669' : '#111827' 
 
   // 1. TELA DE LOGIN / CADASTRO
   if (!session) {
@@ -299,7 +300,7 @@ export default function App() {
   if (!selectedBrand && activeTab !== 'users') {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <header style={{ width: '100%', maxWidth: '800px', backgroundColor: '#111827', color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+        <header style={{ width: '100%', maxWidth: '800px', backgroundColor: '#059669', color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '20px' }}>Selecione a Marca</h1>
             <span style={{ fontSize: '12px', opacity: 0.9 }}>
@@ -334,7 +335,7 @@ export default function App() {
           {/* CARD MSPORTS */}
           <div 
             onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }}
-            style={{ flex: '1 1 300px', backgroundColor: '#111827', border: '2px solid #dc2626', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ flex: '1 1 300px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px', backgroundColor: 'white', padding: '5px', borderRadius: '4px' }} />
             <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos MSports</p>
           </div>
@@ -373,24 +374,24 @@ export default function App() {
               {selectedBrand && (
                 <button 
                   onClick={() => setActiveTab('products')} 
-                  style={{ backgroundColor: activeTab === 'products' ? 'rgba(0,0,0,0.3)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer' }}>
+                  style={{ backgroundColor: activeTab === 'products' ? 'rgba(255,255,255,0.2)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer' }}>
                   Produtos
                 </button>
               )}
               <button 
                 onClick={() => setActiveTab('users')} 
-                style={{ backgroundColor: activeTab === 'users' ? 'rgba(0,0,0,0.3)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                style={{ backgroundColor: activeTab === 'users' ? 'rgba(255,255,255,0.2)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Users size={16} /> Usuários
               </button>
               {activeTab === 'products' && selectedBrand && (
-                <button onClick={() => openModal()} style={{ backgroundColor: 'white', color: brandColor, border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <button onClick={() => openModal()} style={{ backgroundColor: 'white', color: isManatex ? '#059669' : '#111827', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <Plus size={16} /> Novo Produto ({selectedBrand.toUpperCase()})
                 </button>
               )}
             </>
           )}
 
-          <button onClick={handleLogout} style={{ backgroundColor: isManatex ? '#ef4444' : '#111827', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
             <LogOut size={16} /> Sair
           </button>
         </div>
@@ -401,7 +402,7 @@ export default function App() {
         <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <h2 style={{ margin: 0, fontSize: '18px', color: '#1e293b' }}>Usuários e Permissões</h2>
-            <button onClick={() => { setActiveTab('products'); if(!selectedBrand) setSelectedBrand('manatex'); }} style={{ color: brandColor, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+            <button onClick={() => { setActiveTab('products'); if(!selectedBrand) setSelectedBrand('manatex'); }} style={{ color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
               Voltar para Produtos
             </button>
           </div>
@@ -472,7 +473,7 @@ export default function App() {
             <div style={{ overflowX: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
-                  <tr style={{ backgroundColor: isManatex ? '#1e293b' : '#111827', color: 'white', fontSize: '14px' }}>
+                  <tr style={{ backgroundColor: isManatex ? '#059669' : '#111827', color: 'white', fontSize: '14px' }}>
                     <th style={{ padding: '12px' }}>Produto</th>
                     <th style={{ padding: '12px' }}>À Vista</th>
                     <th style={{ padding: '12px' }}>À Prazo</th>
@@ -497,7 +498,7 @@ export default function App() {
                     filteredProducts.map((p) => (
                       <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.nome}</td>
-                        <td style={{ padding: '12px', color: brandColor, fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
+                        <td style={{ padding: '12px', color: isManatex ? '#059669' : '#111827', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
                         <td style={{ padding: '12px' }}>{formatMoeda(p.a_prazo)}</td>
                         <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m)}</td>
                         <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m2)}</td>
@@ -585,10 +586,9 @@ export default function App() {
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Composição</label>
                 <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
               </div>
-              <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="button" onClick={closeModal} style={{ padding: '8px 16px', border: '1px solid #ccc', borderRadius: '5px', background: 'none', cursor: 'pointer' }}>Cancelar</button>
-                <button type="submit" style={{ padding: '8px 16px', backgroundColor: brandColor, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Salvar</button>
-              </div>
+              <button type="submit" style={{ backgroundColor: brandColor, color: 'white', border: 'none', padding: '10px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}>
+                {editingId ? 'Atualizar Produto' : 'Cadastrar Produto'}
+              </button>
             </form>
           </div>
         </div>
