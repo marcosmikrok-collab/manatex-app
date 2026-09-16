@@ -48,24 +48,22 @@ export default function App() {
   })
 
   // Helper para converter qualquer entrada do Excel (77,9736 ou 77.97) em decimal correto
-const parseInputValue = (val) => {
-  if (val === null || val === undefined || val === '') return null
-  if (typeof val === 'number') return parseFloat(val.toFixed(2))
+  const parseInputValue = (val) => {
+    if (val === null || val === undefined || val === '') return null
+    if (typeof val === 'number') return parseFloat(val.toFixed(2))
 
-  let strVal = val.toString().trim()
+    let strVal = val.toString().trim()
 
-  // Se o Excel veio no formato brasileiro com vírgula (ex: 77,9736 ou 1.234,56)
-  if (strVal.includes(',')) {
-    // Remove pontos que possam ser separadores de milhar e troca a vírgula decimal por ponto
-    strVal = strVal.replace(/\./g, '').replace(',', '.')
+    // Se o Excel veio no formato brasileiro com vírgula
+    if (strVal.includes(',')) {
+      strVal = strVal.replace(/\./g, '').replace(',', '.')
+    }
+
+    const parsed = parseFloat(strVal)
+    if (isNaN(parsed)) return null
+
+    return Math.round(parsed * 100) / 100
   }
-
-  const parsed = parseFloat(strVal)
-  if (isNaN(parsed)) return null
-
-  // Arredonda para 2 casas decimais para evitar dízimas ou casas extras do Excel
-  return Math.round(parsed * 100) / 100
-}
 
   // 1. Monitorar Autenticação e Perfil
   useEffect(() => {
@@ -178,7 +176,7 @@ const parseInputValue = (val) => {
     e.preventDefault()
     const payload = {
       nome: formData.nome,
-      marca: selectedBrand, // Associa à marca selecionada atualmente
+      marca: selectedBrand,
       a_vista: parseInputValue(formData.a_vista),
       a_prazo: parseInputValue(formData.a_prazo),
       valor_m: parseInputValue(formData.valor_m),
@@ -298,8 +296,6 @@ const parseInputValue = (val) => {
   if (!selectedBrand && activeTab !== 'users') {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        
-        {/* Cabeçalho */}
         <header style={{ width: '100%', maxWidth: '800px', backgroundColor: '#059669', color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '20px' }}>Selecione a Marca</h1>
@@ -321,41 +317,34 @@ const parseInputValue = (val) => {
           </div>
         </header>
 
-        {/* Cards de Seleção de Marca */}
         <h2 style={{ color: '#1e293b', marginBottom: '30px' }}>Qual tabela de produtos deseja acessar?</h2>
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px', width: '100%' }}>
-          
-          {/* Card Manatex */}
           <div 
             onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }}
-            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', transition: 'transform 0.2s' }}>
+            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
             <Layers size={48} color="#059669" style={{ marginBottom: '15px' }} />
             <h2 style={{ margin: '0 0 10px 0', color: '#059669', fontSize: '24px' }}>MANATEX</h2>
             <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos Manatex</p>
           </div>
 
-          {/* Card MSports */}
           <div 
             onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }}
-            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #2563eb', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', transition: 'transform 0.2s' }}>
+            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #2563eb', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
             <Package size={48} color="#2563eb" style={{ marginBottom: '15px' }} />
             <h2 style={{ margin: '0 0 10px 0', color: '#2563eb', fontSize: '24px' }}>MSPORTS</h2>
             <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos MSports</p>
           </div>
-
         </div>
       </div>
     )
   }
 
-  // 4. PAINEL PRINCIPAL (Tabela da Marca Selecionada ou Gerenciamento de Usuários)
+  // 4. PAINEL PRINCIPAL
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#2563eb'
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px' }}>
-      
-      {/* Cabeçalho */}
       <header style={{ backgroundColor: brandColor, color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           {selectedBrand && (
@@ -377,7 +366,6 @@ const parseInputValue = (val) => {
         </div>
 
         <div style={{ display: 'flex', gap: '10px' }}>
-          {/* Navegação do Admin */}
           {profile?.role === 'admin' && (
             <>
               {selectedBrand && (
@@ -406,7 +394,7 @@ const parseInputValue = (val) => {
         </div>
       </header>
 
-      {/* ABA DE GERENCIAMENTO DE USUÁRIOS (Apenas Admin) */}
+      {/* ABA DE USUÁRIOS */}
       {activeTab === 'users' && profile?.role === 'admin' ? (
         <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -456,7 +444,7 @@ const parseInputValue = (val) => {
           </table>
         </div>
       ) : (
-        /* ABA DE PRODUTOS DA MARCA SELECIONADA */
+        /* ABA DE PRODUTOS */
         <>
           <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
@@ -595,9 +583,9 @@ const parseInputValue = (val) => {
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Composição</label>
                 <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={closeModal} style={{ padding: '8px 15px', border: '1px solid #ccc', borderRadius: '5px', cursor: 'pointer' }}>Cancelar</button>
-                <button type="submit" style={{ padding: '8px 15px', backgroundColor: brandColor, color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Salvar</button>
+              <div style={{ marginTop: '15px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" onClick={closeModal} style={{ padding: '8px 16px', border: '1px solid #ccc', borderRadius: '5px', background: 'none', cursor: 'pointer' }}>Cancelar</button>
+                <button type="submit" style={{ padding: '8px 16px', backgroundColor: brandColor, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Salvar</button>
               </div>
             </form>
           </div>
