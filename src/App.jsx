@@ -54,7 +54,6 @@ export default function App() {
 
     let strVal = val.toString().trim()
 
-    // Se o Excel veio no formato brasileiro com vírgula
     if (strVal.includes(',')) {
       strVal = strVal.replace(/\./g, '').replace(',', '.')
     }
@@ -237,6 +236,10 @@ export default function App() {
     p.composicao?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  // Configuração das Cores do Tema
+  const isManatex = selectedBrand === 'manatex'
+  const brandColor = isManatex ? '#059669' : '#dc2626' // Verde Manatex x Vermelho MSports
+
   // 1. TELA DE LOGIN / CADASTRO
   if (!session) {
     return (
@@ -296,7 +299,7 @@ export default function App() {
   if (!selectedBrand && activeTab !== 'users') {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <header style={{ width: '100%', maxWidth: '800px', backgroundColor: '#059669', color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+        <header style={{ width: '100%', maxWidth: '800px', backgroundColor: '#111827', color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '20px' }}>Selecione a Marca</h1>
             <span style={{ fontSize: '12px', opacity: 0.9 }}>
@@ -319,30 +322,29 @@ export default function App() {
 
         <h2 style={{ color: '#1e293b', marginBottom: '30px' }}>Qual tabela de produtos deseja acessar?</h2>
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px', width: '100%' }}>
+          
+          {/* CARD MANATEX */}
           <div 
             onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }}
-            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-            <Layers size={48} color="#059669" style={{ marginBottom: '15px' }} />
-            <h2 style={{ margin: '0 0 10px 0', color: '#059669', fontSize: '24px' }}>MANATEX</h2>
+            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <img src="/mana.jpg" alt="Manatex Têxtil" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px' }} />
             <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos Manatex</p>
           </div>
 
+          {/* CARD MSPORTS */}
           <div 
             onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }}
-            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #2563eb', borderRadius: '12px', padding: '40px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-            <Package size={48} color="#2563eb" style={{ marginBottom: '15px' }} />
-            <h2 style={{ margin: '0 0 10px 0', color: '#2563eb', fontSize: '24px' }}>MSPORTS</h2>
-            <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos MSports</p>
+            style={{ flex: '1 1 300px', backgroundColor: '#111827', border: '2px solid #dc2626', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px', backgroundColor: 'white', padding: '5px', borderRadius: '4px' }} />
+            <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos MSports</p>
           </div>
+
         </div>
       </div>
     )
   }
 
-  // 4. PAINEL PRINCIPAL
-  const isManatex = selectedBrand === 'manatex'
-  const brandColor = isManatex ? '#059669' : '#2563eb'
-
+  // 4. PAINEL PRINCIPAL DE PRODUTOS/USUÁRIOS
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px' }}>
       <header style={{ backgroundColor: brandColor, color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -371,13 +373,13 @@ export default function App() {
               {selectedBrand && (
                 <button 
                   onClick={() => setActiveTab('products')} 
-                  style={{ backgroundColor: activeTab === 'products' ? 'rgba(0,0,0,0.2)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer' }}>
+                  style={{ backgroundColor: activeTab === 'products' ? 'rgba(0,0,0,0.3)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer' }}>
                   Produtos
                 </button>
               )}
               <button 
                 onClick={() => setActiveTab('users')} 
-                style={{ backgroundColor: activeTab === 'users' ? 'rgba(0,0,0,0.2)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                style={{ backgroundColor: activeTab === 'users' ? 'rgba(0,0,0,0.3)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <Users size={16} /> Usuários
               </button>
               {activeTab === 'products' && selectedBrand && (
@@ -388,7 +390,7 @@ export default function App() {
             </>
           )}
 
-          <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <button onClick={handleLogout} style={{ backgroundColor: isManatex ? '#ef4444' : '#111827', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
             <LogOut size={16} /> Sair
           </button>
         </div>
@@ -405,7 +407,7 @@ export default function App() {
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr style={{ backgroundColor: '#1e293b', color: 'white', fontSize: '14px' }}>
+              <tr style={{ backgroundColor: '#111827', color: 'white', fontSize: '14px' }}>
                 <th style={{ padding: '12px' }}>E-mail</th>
                 <th style={{ padding: '12px' }}>Perfil (Role)</th>
                 <th style={{ padding: '12px' }}>Status</th>
@@ -470,7 +472,7 @@ export default function App() {
             <div style={{ overflowX: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#1e293b', color: 'white', fontSize: '14px' }}>
+                  <tr style={{ backgroundColor: isManatex ? '#1e293b' : '#111827', color: 'white', fontSize: '14px' }}>
                     <th style={{ padding: '12px' }}>Produto</th>
                     <th style={{ padding: '12px' }}>À Vista</th>
                     <th style={{ padding: '12px' }}>À Prazo</th>
