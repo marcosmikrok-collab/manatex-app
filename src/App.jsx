@@ -463,37 +463,68 @@ export default function App() {
                       </td>
                     </tr>
                   ) : (
-                    filteredProducts.map((p) => (
-                      <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.nome}</td>
-                        <td style={{ padding: '12px', color: brandColor, fontWeight: 'bold' }}>R$ {Number(p.a_vista || 0).toFixed(2)}</td>
-                        <td style={{ padding: '12px' }}>R$ {Number(p.a_prazo || 0).toFixed(2)}</td>
-                        <td style={{ padding: '12px' }}>R$ {Number(p.valor_m || 0).toFixed(2)}</td>
-                        <td style={{ padding: '12px' }}>R$ {Number(p.valor_m2 || 0).toFixed(2)}</td>
-                        <td style={{ padding: '12px' }}>{p.largura}m</td>
-                        <td style={{ padding: '12px' }}>{p.gramatura}g</td>
-                        <td style={{ padding: '12px' }}>{p.rendimento_m}</td>
-                        <td style={{ padding: '12px' }}>{p.rendimento_m2}</td>
-                        <td style={{ padding: '12px', fontSize: '13px' }}>{p.composicao}</td>
-                        {profile?.role === 'admin' && (
-                          <td style={{ padding: '12px', textAlign: 'center' }}>
-                            <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', marginRight: '8px' }}>
-                              <Edit2 size={16} />
-                            </button>
-                            <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626' }}>
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
+                    {filteredProducts.map((p) => (
+  <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
+    <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.nome}</td>
+    
+    {/* Preços com R$ e Vírgula (ex: R$ 73,56) */}
+    <td style={{ padding: '12px', color: brandColor, fontWeight: 'bold' }}>
+      {p.a_vista !== null && p.a_vista !== undefined 
+        ? p.a_vista.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
+        : '-'}
+    </td>
+    <td style={{ padding: '12px' }}>
+      {p.a_prazo !== null && p.a_prazo !== undefined 
+        ? p.a_prazo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
+        : '-'}
+    </td>
+    <td style={{ padding: '12px' }}>
+      {p.valor_m !== null && p.valor_m !== undefined 
+        ? p.valor_m.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
+        : '-'}
+    </td>
+    <td style={{ padding: '12px' }}>
+      {p.valor_m2 !== null && p.valor_m2 !== undefined 
+        ? p.valor_m2.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) 
+        : '-'}
+    </td>
+
+    {/* Medidas com vírgula para decimais (ex: 1,75m / 8,33) */}
+    <td style={{ padding: '12px' }}>
+      {p.largura !== null && p.largura !== undefined 
+        ? `${p.largura.toLocaleString('pt-BR')}m` 
+        : '-'}
+    </td>
+    <td style={{ padding: '12px' }}>
+      {p.gramatura !== null && p.gramatura !== undefined 
+        ? `${p.gramatura.toLocaleString('pt-BR')}g` 
+        : '-'}
+    </td>
+    <td style={{ padding: '12px' }}>
+      {p.rendimento_m !== null && p.rendimento_m !== undefined 
+        ? p.rendimento_m.toLocaleString('pt-BR') 
+        : '-'}
+    </td>
+    <td style={{ padding: '12px' }}>
+      {p.rendimento_m2 !== null && p.rendimento_m2 !== undefined 
+        ? p.rendimento_m2.toLocaleString('pt-BR') 
+        : '-'}
+    </td>
+
+    <td style={{ padding: '12px', fontSize: '13px' }}>{p.composicao}</td>
+
+    {profile?.role === 'admin' && (
+      <td style={{ padding: '12px', textAlign: 'center' }}>
+        <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', marginRight: '8px' }}>
+          <Edit2 size={16} />
+        </button>
+        <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626' }}>
+          <Trash2 size={16} />
+        </button>
+      </td>
+    )}
+  </tr>
+))}
 
       {/* Modal Cadastro/Edição de Produto */}
       {isModalOpen && profile?.role === 'admin' && (
