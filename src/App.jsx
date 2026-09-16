@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, Package, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, Package, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download, KeyRound } from 'lucide-react'
 
 // Funções para formatar valores no padrão brasileiro (com vírgula)
 const formatMoeda = (valor) => {
@@ -21,8 +21,12 @@ export default function App() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [isSignUp, setIsSignUp] = useState(false)
+  const [isForgotPassword, setIsForgotPassword] = useState(false)
+  const [isResettingPassword, setIsResettingPassword] = useState(false)
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [authMessage, setAuthMessage] = useState('')
 
@@ -71,8 +75,11 @@ export default function App() {
       if (session) fetchUserProfile(session.user.id)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResettingPassword(true)
+      }
       if (session) fetchUserProfile(session.user.id)
       else setProfile(null)
     })
@@ -80,32 +87,31 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // 1. Buscar perfil do usuário logado
-const fetchUserProfile = async (userId) => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle()
+  // Buscar perfil do usuário logado
+  const fetchUserProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
 
-    if (error) {
-      console.error('Erro ao buscar perfil:', error)
-      return
-    }
+      if (error) {
+        console.error('Erro ao buscar perfil:', error)
+        return
+      }
 
-    if (data) {
-      setProfile(data)
-    } else {
-      // Caso a trigger de criacao de perfil no Supabase falhe ou nao exista
-      setProfile({ id: userId, role: 'user', approved: true })
+      if (data) {
+        setProfile(data)
+      } else {
+        setProfile({ id: userId, role: 'user', approved: true })
+      }
+    } catch (err) {
+      console.error('Erro inesperado:', err)
     }
-  } catch (err) {
-    console.error('Erro inesperado:', err)
   }
-}
 
-  // Buscar Produtos (Filtrado por Marca se selecionada)
+  // Buscar Produtos
   const fetchProducts = async () => {
     if (!selectedBrand) return
     setLoading(true)
@@ -156,95 +162,46 @@ const fetchUserProfile = async (userId) => {
     }
   }
 
+  // Enviar e-mail de redefinição de senha
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setAuthError('')
+    setAuthMessage('')
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin
+    })
+
+    if (error) {
+      setAuthError('Erro ao enviar e-mail de recuperação: ' + error.message)
+    } else {
+      setAuthMessage('E-mail de redefinição enviado! Verifique sua caixa de entrada.')
+    }
+  }
+
+  // Atualizar senha com o link do e-mail
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault()
+    setAuthError('')
+    setAuthMessage('')
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+
+    if (error) {
+      setAuthError('Erro ao redefinir a senha: ' + error.message)
+    } else {
+      setAuthMessage('Senha alterada com sucesso!')
+      setIsResettingPassword(false)
+      setNewPassword('')
+    }
+  }
+
   const handleLogout = () => {
     setSelectedBrand(null)
     supabase.auth.signOut()
   }
 
-  // Adicione estes novos estados no topo do seu componente App
-const [resetEmailSent, setResetEmailSent] = useState(false)
-const [isResettingPassword, setIsResettingPassword] = useState(false)
-const [newPassword, setNewPassword] = useState('')
-
-// 1. Escutar evento de recuperação de senha vindo do e-mail
-useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-    if (event === 'PASSWORD_RECOVERY') {
-      setIsResettingPassword(true)
-    }
-  })
-  return () => subscription.unsubscribe()
-}, [])
-
-// 2. Enviar e-mail de redefinição de senha
-const handleSendResetEmail = async (e) => {
-  e.preventDefault()
-  setAuthError('')
-  setAuthMessage('')
-
-  if (!email) {
-    setAuthError('Por favor, informe seu e-mail.')
-    return
-  }
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin // Redireciona de volta para a sua aplicação
-  })
-
-  if (error) {
-    setAuthError(error.message)
-  } else {
-    setResetEmailSent(true)
-    setAuthMessage('E-mail de redefinição enviado! Verifique sua caixa de entrada.')
-  }
-}
-
-// 3. Salvar a nova senha digitada
-const handleUpdatePassword = async (e) => {
-  e.preventDefault()
-  setAuthError('')
-  setAuthMessage('')
-
-  const { error } = await supabase.auth.updateUser({ password: newPassword })
-
-  if (error) {
-    setAuthError(error.message)
-  } else {
-    alert('Senha alterada com sucesso!')
-    setIsResettingPassword(false)
-    setNewPassword('')
-  }
-}
-
-  if (isResettingPassword) {
-  return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <form onSubmit={handleUpdatePassword} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
-        <h2 style={{ textAlign: 'center', color: '#1e293b', marginBottom: '20px' }}>Criar Nova Senha</h2>
-        
-        {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
-        
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Nova Senha</label>
-          <input 
-            type="password" 
-            required 
-            value={newPassword} 
-            onChange={e => setNewPassword(e.target.value)} 
-            style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} 
-            placeholder="Mínimo 6 caracteres" 
-          />
-        </div>
-
-        <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-          Salvar Nova Senha
-        </button>
-      </form>
-    </div>
-  )
-}
-
-  // --- Exportar para Excel ---
+  // Exportar para Excel
   const handleExportExcel = async () => {
     if (!window.XLSX) {
       await new Promise((resolve, reject) => {
@@ -282,7 +239,7 @@ const handleUpdatePassword = async (e) => {
     window.XLSX.writeFile(workbook, `Tabela_${selectedBrand?.toUpperCase()}_${dataHoje}.xlsx`)
   }
 
-  // --- Ações do Admin em Usuários ---
+  // Ações do Admin em Usuários
   const toggleApproval = async (userId, currentStatus) => {
     await supabase.from('profiles').update({ approved: !currentStatus }).eq('id', userId)
     fetchUsers()
@@ -294,7 +251,7 @@ const handleUpdatePassword = async (e) => {
     fetchUsers()
   }
 
-  // --- CRUD Produtos ---
+  // CRUD Produtos
   const handleSaveProduct = async (e) => {
     e.preventDefault()
     const payload = {
@@ -363,49 +320,101 @@ const handleUpdatePassword = async (e) => {
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827' 
 
-  // 1. TELA DE LOGIN / CADASTRO
-  if (!session) {
+  // TELA DE REDEFINIÇÃO DE SENHA (VIA LINK DO E-MAIL)
+  if (isResettingPassword) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <form onSubmit={handleAuth} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
+        <form onSubmit={handleUpdatePassword} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
-            {isSignUp ? <UserPlus size={40} /> : <Lock size={40} />}
-            <h2 style={{ margin: '10px 0 0 0', color: '#1e293b' }}>{isSignUp ? 'Criar Conta' : 'Catálogo de Preços'}</h2>
+            <KeyRound size={40} />
+            <h2 style={{ margin: '10px 0 0 0', color: '#1e293b' }}>Criar Nova Senha</h2>
           </div>
 
           {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
           {authMessage && <p style={{ color: 'green', fontSize: '13px', textAlign: 'center' }}>{authMessage}</p>}
 
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>E-mail</label>
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
-          </div>
-
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Senha</label>
-            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} placeholder="Mínimo 6 caracteres" />
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Nova Senha</label>
+            <input type="password" required value={newPassword} onChange={e => setNewPassword(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} placeholder="Mínimo 6 caracteres" />
           </div>
 
           <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
-            {isSignUp ? 'Cadastrar' : 'Entrar'}
+            Salvar Nova Senha
           </button>
-
-          <div style={{ textAlign: 'center' }}>
-            <button type="button" onClick={() => { setIsSignUp(!isSignUp); setAuthError(''); setAuthMessage(''); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
-              {isSignUp ? 'Já tem uma conta? Faça login' : 'Não tem conta? Cadastre-se aqui'}
-            </button>
-          </div>
         </form>
       </div>
+    )
+  }
 
-      <div style={{ textAlign: 'right', marginTop: '5px', marginBottom: '15px' }}>
-  <button 
-    type="button" 
-    onClick={handleSendResetEmail} 
-    style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '12px', textDecoration: 'underline' }}>
-    Esqueci minha senha
-  </button>
-</div>
+  // 1. TELA DE LOGIN / CADASTRO / ESQUECI A SENHA
+  if (!session) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        {isForgotPassword ? (
+          <form onSubmit={handleForgotPassword} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
+              <KeyRound size={40} />
+              <h2 style={{ margin: '10px 0 0 0', color: '#1e293b' }}>Recuperar Senha</h2>
+            </div>
+
+            {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
+            {authMessage && <p style={{ color: 'green', fontSize: '13px', textAlign: 'center' }}>{authMessage}</p>}
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Seu E-mail registrado</label>
+              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} placeholder="exemplo@email.com" />
+            </div>
+
+            <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
+              Enviar E-mail de Recuperação
+            </button>
+
+            <div style={{ textAlign: 'center' }}>
+              <button type="button" onClick={() => { setIsForgotPassword(false); setAuthError(''); setAuthMessage(''); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
+                Voltar para o Login
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleAuth} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
+              {isSignUp ? <UserPlus size={40} /> : <Lock size={40} />}
+              <h2 style={{ margin: '10px 0 0 0', color: '#1e293b' }}>{isSignUp ? 'Criar Conta' : 'Catálogo de Preços'}</h2>
+            </div>
+
+            {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
+            {authMessage && <p style={{ color: 'green', fontSize: '13px', textAlign: 'center' }}>{authMessage}</p>}
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>E-mail</label>
+              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+            </div>
+
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Senha</label>
+              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} placeholder="Mínimo 6 caracteres" />
+            </div>
+
+            {!isSignUp && (
+              <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+                <button type="button" onClick={() => { setIsForgotPassword(true); setAuthError(''); setAuthMessage(''); }} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '12px' }}>
+                  Esqueceu sua senha?
+                </button>
+              </div>
+            )}
+
+            <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
+              {isSignUp ? 'Cadastrar' : 'Entrar'}
+            </button>
+
+            <div style={{ textAlign: 'center' }}>
+              <button type="button" onClick={() => { setIsSignUp(!isSignUp); setAuthError(''); setAuthMessage(''); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
+                {isSignUp ? 'Já tem uma conta? Faça login' : 'Não tem conta? Cadastre-se aqui'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     )
   }
 
@@ -417,7 +426,7 @@ const handleUpdatePassword = async (e) => {
           <ShieldAlert size={50} color="#eab308" style={{ marginBottom: '10px' }} />
           <h2 style={{ color: '#1e293b', margin: '0 0 10px 0' }}>Aguardando Autorização</h2>
           <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.5' }}>
-            Sua conta foi confirmada, porém precisa ser **aprovada por um administrador** antes de liberar o acesso aos preços.
+            Sua conta foi confirmada, porém precisa ser <strong>aprovada por um administrador</strong> antes de liberar o acesso aos preços.
           </p>
           <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginTop: '15px' }}>
             Sair
@@ -700,28 +709,28 @@ const handleUpdatePassword = async (e) => {
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Largura (m)</label>
-                  <input type="text" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
+                  <input type="text" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="1,60" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Gramatura (g)</label>
-                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0" />
+                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="180" />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M (m)</label>
-                  <input type="text" value={formData.rendimento_m} onChange={e => setFormData({...formData, rendimento_m: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M</label>
+                  <input type="text" value={formData.rendimento_m} onChange={e => setFormData({...formData, rendimento_m: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="3,10" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M² (m²)</label>
-                  <input type="text" value={formData.rendimento_m2} onChange={e => setFormData({...formData, rendimento_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M²</label>
+                  <input type="text" value={formData.rendimento_m2} onChange={e => setFormData({...formData, rendimento_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="5,00" />
                 </div>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Composição</label>
-                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="100% Algodão" />
               </div>
-              <button type="submit" style={{ backgroundColor: brandColor, color: 'white', border: 'none', padding: '10px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}>
+              <button type="submit" style={{ backgroundColor: brandColor, color: 'white', border: 'none', padding: '10px', borderRadius: '5px', fontWeight: 'bold', marginTop: '10px', cursor: 'pointer' }}>
                 {editingId ? 'Atualizar Produto' : 'Cadastrar Produto'}
               </button>
             </form>
