@@ -67,22 +67,21 @@ const parseInputValue = (val) => {
   return Math.round(parsed * 100) / 100
 }
 
-  // 1. Função que busca no banco
-const fetchProducts = async () => {
-  const { data, error } = await supabase.from('produtos').select('*')
-  
-  if (error) {
-    console.error('Erro ao buscar do Supabase:', error)
-  } else {
-    // Atualiza o estado com os dados do banco
-    setProducts(data || []) 
-  }
-}
+  // 1. Monitorar Autenticação e Perfil
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      if (session) fetchUserProfile(session.user.id)
+    })
 
-// 2. Garanta que o useEffect tem o array de dependências vazio []
-useEffect(() => {
-  fetchProducts()
-}, [])
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      if (session) fetchUserProfile(session.user.id)
+      else setProfile(null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   // Buscar perfil do usuário logado
   const fetchUserProfile = async (userId) => {
