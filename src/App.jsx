@@ -304,6 +304,17 @@ export default function App() {
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827'
 
+  // ESTILO DOS THs COM SUPORTE A CABEÇALHO CONGELADO (STICKY)
+  const stickyThStyle = {
+    padding: '10px',
+    position: 'sticky',
+    top: 0,
+    backgroundColor: isManatex ? '#059669' : '#111827',
+    color: 'white',
+    zIndex: 10,
+    boxShadow: '0 2px 2px -1px rgba(0, 0, 0, 0.2)'
+  }
+
   // RESET DE SENHA
   if (isResettingPassword) {
     return (
@@ -464,23 +475,23 @@ export default function App() {
         </div>
 
         {globalSearchTerm ? (
-          <div style={{ width: '100%', maxWidth: '900px', overflowX: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-            <h3 style={{ padding: '12px 15px', margin: 0, backgroundColor: '#f1f5f9', color: '#334155', borderBottom: '1px solid #e2e8f0', fontSize: '14px' }}>
+          <div style={{ width: '100%', maxWidth: '900px', maxHeight: 'calc(100vh - 220px)', overflow: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+            <h3 style={{ padding: '12px 15px', margin: 0, backgroundColor: '#f1f5f9', color: '#334155', borderBottom: '1px solid #e2e8f0', fontSize: '14px', position: 'sticky', top: 0, zIndex: 11 }}>
               Resultados ({filteredGlobalProducts.length})
             </h3>
             <div style={{ overflowX: 'auto', width: '100%' }}>
               <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#1e293b', color: 'white' }}>
-                    <th style={{ padding: '10px' }}>Marca</th>
-                    <th style={{ padding: '10px' }}>Produto</th>
-                    <th style={{ padding: '10px' }}>À Vista</th>
-                    <th style={{ padding: '10px' }}>À Prazo</th>
-                    <th style={{ padding: '10px' }}>Valor M</th>
-                    <th style={{ padding: '10px' }}>Valor M²</th>
-                    <th style={{ padding: '10px' }}>Largura</th>
-                    <th style={{ padding: '10px' }}>Gram.</th>
-                    <th style={{ padding: '10px' }}>Composição</th>
+                  <tr>
+                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Marca</th>
+                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Produto</th>
+                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>À Vista</th>
+                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>À Prazo</th>
+                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Valor M</th>
+                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Valor M²</th>
+                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Largura</th>
+                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Gram.</th>
+                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Composição</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -541,7 +552,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px', boxSizing: 'border-box' }}>
       
-      {/* HEADER RESPONSIVO PARA CELULAR */}
+      {/* HEADER RESPONSIVO */}
       <header style={{ 
         backgroundColor: brandColor, 
         color: 'white', 
@@ -615,11 +626,11 @@ export default function App() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
-                <tr style={{ backgroundColor: '#111827', color: 'white' }}>
-                  <th style={{ padding: '10px' }}>E-mail</th>
-                  <th style={{ padding: '10px' }}>Perfil</th>
-                  <th style={{ padding: '10px' }}>Status</th>
-                  <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>
+                <tr>
+                  <th style={{ ...stickyThStyle, backgroundColor: '#111827' }}>E-mail</th>
+                  <th style={{ ...stickyThStyle, backgroundColor: '#111827' }}>Perfil</th>
+                  <th style={{ ...stickyThStyle, backgroundColor: '#111827' }}>Status</th>
+                  <th style={{ ...stickyThStyle, backgroundColor: '#111827', textAlign: 'center' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -686,21 +697,29 @@ export default function App() {
           {loading ? (
             <p style={{ textAlign: 'center', color: '#64748b' }}>Carregando produtos...</p>
           ) : (
-            <div style={{ overflowX: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', width: '100%' }}>
+            /* CONTÊINER COM ALTURA MÁXIMA E SCROLL INTERNO PARA CONGELAR O HEADER */
+            <div style={{ 
+              maxHeight: 'calc(100vh - 170px)', 
+              overflow: 'auto', 
+              backgroundColor: 'white', 
+              borderRadius: '8px', 
+              boxShadow: '0 2px 5px rgba(0,0,0,0.1)', 
+              width: '100%' 
+            }}>
               <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ backgroundColor: isManatex ? '#059669' : '#111827', color: 'white' }}>
-                    <th style={{ padding: '10px' }}>Produto</th>
-                    <th style={{ padding: '10px' }}>À Vista</th>
-                    <th style={{ padding: '10px' }}>À Prazo</th>
-                    <th style={{ padding: '10px' }}>Valor M</th>
-                    <th style={{ padding: '10px' }}>Valor M²</th>
-                    <th style={{ padding: '10px' }}>Largura</th>
-                    <th style={{ padding: '10px' }}>Gram.</th>
-                    <th style={{ padding: '10px' }}>Rend. M</th>
-                    <th style={{ padding: '10px' }}>Rend. M²</th>
-                    <th style={{ padding: '10px' }}>Composição</th>
-                    {profile?.role === 'admin' && <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>}
+                  <tr>
+                    <th style={stickyThStyle}>Produto</th>
+                    <th style={stickyThStyle}>À Vista</th>
+                    <th style={stickyThStyle}>À Prazo</th>
+                    <th style={stickyThStyle}>Valor M</th>
+                    <th style={stickyThStyle}>Valor M²</th>
+                    <th style={stickyThStyle}>Largura</th>
+                    <th style={stickyThStyle}>Gram.</th>
+                    <th style={stickyThStyle}>Rend. M</th>
+                    <th style={stickyThStyle}>Rend. M²</th>
+                    <th style={stickyThStyle}>Composição</th>
+                    {profile?.role === 'admin' && <th style={{ ...stickyThStyle, textAlign: 'center' }}>Ações</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -743,7 +762,7 @@ export default function App() {
         </>
       )}
 
-      {/* MODAL ADAPTADO PARA DISPOSITIVOS MÓVEIS */}
+      {/* MODAL RESPONSIVO */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' }}>
