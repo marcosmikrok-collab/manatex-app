@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, Package, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download, KeyRound } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download, KeyRound } from 'lucide-react'
 
-// Funções para formatar valores no padrão brasileiro (com vírgula)
+// Funções de formatação
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
   const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor)
@@ -30,22 +30,17 @@ export default function App() {
   const [authError, setAuthError] = useState('')
   const [authMessage, setAuthMessage] = useState('')
 
-  // Marca selecionada: null (tela de seleção), 'manatex' ou 'msports'
   const [selectedBrand, setSelectedBrand] = useState(null)
-
-  // Aba selecionada pelo Admin: 'products' ou 'users'
   const [activeTab, setActiveTab] = useState('products')
 
-  // Produtos
   const [products, setProducts] = useState([])
-  const [allProducts, setAllProducts] = useState([]) // Armazena produtos de AMBAS as marcas para a busca geral
+  const [allProducts, setAllProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [globalSearchTerm, setGlobalSearchTerm] = useState('') // Busca na tela de seleção
+  const [globalSearchTerm, setGlobalSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
-  // Gerenciamento de Usuários (Admin)
   const [usersList, setUsersList] = useState([])
 
   const [formData, setFormData] = useState({
@@ -53,24 +48,18 @@ export default function App() {
     largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: ''
   })
 
-  // Helper para converter qualquer entrada em decimal correto
   const parseInputValue = (val) => {
     if (val === null || val === undefined || val === '') return null
     if (typeof val === 'number') return parseFloat(val.toFixed(2))
-
     let strVal = val.toString().trim()
-
     if (strVal.includes(',')) {
       strVal = strVal.replace(/\./g, '').replace(',', '.')
     }
-
     const parsed = parseFloat(strVal)
     if (isNaN(parsed)) return null
-
     return Math.round(parsed * 100) / 100
   }
 
-  // 1. Monitorar Autenticação e Perfil
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -89,7 +78,6 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Buscar perfil do usuário logado
   const fetchUserProfile = async (userId) => {
     try {
       const { data, error } = await supabase
@@ -98,22 +86,14 @@ export default function App() {
         .eq('id', userId)
         .maybeSingle()
 
-      if (error) {
-        console.error('Erro ao buscar perfil:', error)
-        return
-      }
-
-      if (data) {
-        setProfile(data)
-      } else {
-        setProfile({ id: userId, role: 'user', approved: true })
-      }
+      if (error) return
+      if (data) setProfile(data)
+      else setProfile({ id: userId, role: 'user', approved: true })
     } catch (err) {
-      console.error('Erro inesperado:', err)
+      console.error(err)
     }
   }
 
-  // Buscar Produtos de Uma Marca Específica
   const fetchProducts = async () => {
     if (!selectedBrand) return
     setLoading(true)
@@ -127,7 +107,6 @@ export default function App() {
     setLoading(false)
   }
 
-  // Buscar Todos os Produtos (Manatex + MSports) para a Busca Global
   const fetchAllProducts = async () => {
     const { data, error } = await supabase
       .from('produtos')
@@ -137,7 +116,6 @@ export default function App() {
     if (!error) setAllProducts(data || [])
   }
 
-  // Buscar Todos os Usuários (Apenas Admin)
   const fetchUsers = async () => {
     const { data } = await supabase
       .from('profiles')
@@ -149,13 +127,12 @@ export default function App() {
 
   useEffect(() => {
     if (session && profile?.approved) {
-      fetchAllProducts() // Carrega todos os produtos para busca global
+      fetchAllProducts()
       if (selectedBrand) fetchProducts()
       if (profile?.role === 'admin') fetchUsers()
     }
   }, [session, profile, selectedBrand])
 
-  // Login / Cadastro
   const handleAuth = async (e) => {
     e.preventDefault()
     setAuthError('')
@@ -163,9 +140,8 @@ export default function App() {
 
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({ email, password })
-      if (error) {
-        setAuthError(error.message)
-      } else {
+      if (error) setAuthError(error.message)
+      else {
         setAuthMessage('Cadastro realizado! Por favor, confirme seu e-mail e aguarde a aprovação do administrador.')
         setIsSignUp(false)
       }
@@ -175,7 +151,6 @@ export default function App() {
     }
   }
 
-  // Enviar e-mail de redefinição de senha
   const handleForgotPassword = async (e) => {
     e.preventDefault()
     setAuthError('')
@@ -185,24 +160,18 @@ export default function App() {
       redirectTo: window.location.origin
     })
 
-    if (error) {
-      setAuthError('Erro ao enviar e-mail de recuperação: ' + error.message)
-    } else {
-      setAuthMessage('E-mail de redefinição enviado! Verifique sua caixa de entrada.')
-    }
+    if (error) setAuthError('Erro ao enviar e-mail: ' + error.message)
+    else setAuthMessage('E-mail enviado! Verifique sua caixa de entrada.')
   }
 
-  // Atualizar senha com o link do e-mail
   const handleUpdatePassword = async (e) => {
     e.preventDefault()
     setAuthError('')
     setAuthMessage('')
 
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-
-    if (error) {
-      setAuthError('Erro ao redefinir a senha: ' + error.message)
-    } else {
+    if (error) setAuthError('Erro ao redefinir: ' + error.message)
+    else {
       setAuthMessage('Senha alterada com sucesso!')
       setIsResettingPassword(false)
       setNewPassword('')
@@ -214,7 +183,6 @@ export default function App() {
     supabase.auth.signOut()
   }
 
-  // Exportar para Excel
   const handleExportExcel = async () => {
     if (!window.XLSX) {
       await new Promise((resolve, reject) => {
@@ -228,31 +196,28 @@ export default function App() {
 
     const dataToExport = filteredProducts.map((p) => ({
       'Produto': p.nome || '',
-      'À Vista': p.a_vista !== null && p.a_vista !== undefined ? p.a_vista : '',
-      'À Prazo': p.a_prazo !== null && p.a_prazo !== undefined ? p.a_prazo : '',
-      'Valor M': p.valor_m !== null && p.valor_m !== undefined ? p.valor_m : '',
-      'Valor M²': p.valor_m2 !== null && p.valor_m2 !== undefined ? p.valor_m2 : '',
-      'Largura (m)': p.largura !== null && p.largura !== undefined ? `${p.largura}m` : '',
-      'Gramatura (g)': p.gramatura !== null && p.gramatura !== undefined ? `${p.gramatura}g` : '',
-      'Rendimento M': p.rendimento_m !== null && p.rendimento_m !== undefined ? `${p.rendimento_m}m` : '',
-      'Rendimento M²': p.rendimento_m2 !== null && p.rendimento_m2 !== undefined ? `${p.rendimento_m2}m²` : '',
+      'À Vista': p.a_vista ?? '',
+      'À Prazo': p.a_prazo ?? '',
+      'Valor M': p.valor_m ?? '',
+      'Valor M²': p.valor_m2 ?? '',
+      'Largura (m)': p.largura ? `${p.largura}m` : '',
+      'Gramatura (g)': p.gramatura ? `${p.gramatura}g` : '',
+      'Rendimento M': p.rendimento_m ? `${p.rendimento_m}m` : '',
+      'Rendimento M²': p.rendimento_m2 ? `${p.rendimento_m2}m²` : '',
       'Composição': p.composicao || ''
     }))
 
     const worksheet = window.XLSX.utils.json_to_sheet(dataToExport)
     const workbook = window.XLSX.utils.book_new()
     window.XLSX.utils.book_append_sheet(workbook, worksheet, selectedBrand?.toUpperCase() || 'Produtos')
-
-    const fitToColumn = Object.keys(dataToExport[0] || {}).map((key) => ({
-      wch: Math.max(key.length + 5, 15)
-    }))
+    
+    const fitToColumn = Object.keys(dataToExport[0] || {}).map((key) => ({ wch: Math.max(key.length + 5, 15) }))
     worksheet['!cols'] = fitToColumn
 
     const dataHoje = new Date().toISOString().split('T')[0]
     window.XLSX.writeFile(workbook, `Tabela_${selectedBrand?.toUpperCase()}_${dataHoje}.xlsx`)
   }
 
-  // Ações do Admin em Usuários
   const toggleApproval = async (userId, currentStatus) => {
     await supabase.from('profiles').update({ approved: !currentStatus }).eq('id', userId)
     fetchUsers()
@@ -264,7 +229,6 @@ export default function App() {
     fetchUsers()
   }
 
-  // CRUD Produtos
   const handleSaveProduct = async (e) => {
     e.preventDefault()
     const payload = {
@@ -327,29 +291,27 @@ export default function App() {
     setEditingId(null)
   }
 
-  // Filtro de produtos por marca selecionada
   const filteredProducts = products.filter(p =>
     p.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.composicao?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Filtro de produtos para a BUSCA GLOBAL (Ambas as marcas)
   const filteredGlobalProducts = allProducts.filter(p =>
     p.nome?.toLowerCase().includes(globalSearchTerm.toLowerCase()) ||
     p.composicao?.toLowerCase().includes(globalSearchTerm.toLowerCase())
   )
 
   const isManatex = selectedBrand === 'manatex'
-  const brandColor = isManatex ? '#059669' : '#111827' 
+  const brandColor = isManatex ? '#059669' : '#111827'
 
-  // TELA DE REDEFINIÇÃO DE SENHA (VIA LINK DO E-MAIL)
+  // RESET DE SENHA
   if (isResettingPassword) {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <form onSubmit={handleUpdatePassword} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
+        <form onSubmit={handleUpdatePassword} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px', boxSizing: 'border-box' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
             <KeyRound size={40} />
-            <h2 style={{ margin: '10px 0 0 0', color: '#1e293b' }}>Criar Nova Senha</h2>
+            <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>Criar Nova Senha</h2>
           </div>
 
           {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
@@ -368,15 +330,15 @@ export default function App() {
     )
   }
 
-  // 1. TELA DE LOGIN / CADASTRO / ESQUECI A SENHA
+  // LOGIN / REGISTRO
   if (!session) {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
         {isForgotPassword ? (
-          <form onSubmit={handleForgotPassword} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
+          <form onSubmit={handleForgotPassword} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px', boxSizing: 'border-box' }}>
             <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
               <KeyRound size={40} />
-              <h2 style={{ margin: '10px 0 0 0', color: '#1e293b' }}>Recuperar Senha</h2>
+              <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>Recuperar Senha</h2>
             </div>
 
             {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
@@ -398,10 +360,10 @@ export default function App() {
             </div>
           </form>
         ) : (
-          <form onSubmit={handleAuth} style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
+          <form onSubmit={handleAuth} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px', boxSizing: 'border-box' }}>
             <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
               {isSignUp ? <UserPlus size={40} /> : <Lock size={40} />}
-              <h2 style={{ margin: '10px 0 0 0', color: '#1e293b' }}>{isSignUp ? 'Criar Conta' : 'Catálogo de Preços'}</h2>
+              <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>{isSignUp ? 'Criar Conta' : 'Catálogo de Preços'}</h2>
             </div>
 
             {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
@@ -440,13 +402,13 @@ export default function App() {
     )
   }
 
-  // 2. AGUARDANDO APROVAÇÃO DO ADMIN
+  // AGUARDANDO APROVAÇÃO
   if (profile && !profile.approved) {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '10px', textAlign: 'center', maxWidth: '400px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
+        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', textAlign: 'center', maxWidth: '400px', width: '100%', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', boxSizing: 'border-box' }}>
           <ShieldAlert size={50} color="#eab308" style={{ marginBottom: '10px' }} />
-          <h2 style={{ color: '#1e293b', margin: '0 0 10px 0' }}>Aguardando Autorização</h2>
+          <h2 style={{ color: '#1e293b', margin: '0 0 10px 0', fontSize: '20px' }}>Aguardando Autorização</h2>
           <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.5' }}>
             Sua conta foi confirmada, porém precisa ser <strong>aprovada por um administrador</strong> antes de liberar o acesso aos preços.
           </p>
@@ -458,115 +420,115 @@ export default function App() {
     )
   }
 
-  // 3. SELEÇÃO DE MARCA E BUSCA GLOBAL DE PRODUTOS
+  // SELEÇÃO DE MARCA / BUSCA GLOBAL
   if (!selectedBrand && activeTab !== 'users') {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <header style={{ width: '100%', maxWidth: '800px', backgroundColor: '#059669', color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' }}>
+        <header style={{ width: '100%', maxWidth: '900px', backgroundColor: '#059669', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '20px', boxSizing: 'border-box' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '20px' }}>Catálogo Geral</h1>
+            <h1 style={{ margin: 0, fontSize: '18px' }}>Catálogo Geral</h1>
             <span style={{ fontSize: '12px', opacity: 0.9 }}>
               Nível: <strong>{profile?.role === 'admin' ? 'Administrador' : 'Usuário'}</strong>
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {profile?.role === 'admin' && (
               <button 
                 onClick={() => setActiveTab('users')} 
-                style={{ backgroundColor: 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <Users size={16} /> Usuários
+                style={{ backgroundColor: 'transparent', color: 'white', border: '1px solid white', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px' }}>
+                <Users size={15} /> Usuários
               </button>
             )}
-            <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <LogOut size={16} /> Sair
+            <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px' }}>
+              <LogOut size={15} /> Sair
             </button>
           </div>
         </header>
 
-        {/* CAMPO DE BUSCA GERAL NAS DUAS MARCAS */}
-        <div style={{ width: '100%', maxWidth: '800px', marginBottom: '30px' }}>
+        <div style={{ width: '100%', maxWidth: '900px', marginBottom: '20px' }}>
           <div style={{ position: 'relative', width: '100%' }}>
-            <Search size={20} style={{ position: 'absolute', left: '12px', top: '14px', color: '#888' }} />
+            <Search size={18} style={{ position: 'absolute', left: '12px', top: '13px', color: '#888' }} />
             <input
               type="text"
-              placeholder="Buscar produto nas duas marcas (Manatex e MSports)..."
+              placeholder="Buscar em todas as marcas..."
               value={globalSearchTerm}
               onChange={(e) => setGlobalSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '12px 40px 12px 40px', borderRadius: '8px', border: '2px solid #059669', outline: 'none', boxSizing: 'border-box', fontSize: '15px' }}
+              style={{ width: '100%', padding: '10px 35px 10px 38px', borderRadius: '8px', border: '2px solid #059669', outline: 'none', boxSizing: 'border-box', fontSize: '14px' }}
             />
             {globalSearchTerm && (
-              <button onClick={() => setGlobalSearchTerm('')} style={{ position: 'absolute', right: '12px', top: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}>
-                <X size={20} />
+              <button onClick={() => setGlobalSearchTerm('')} style={{ position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}>
+                <X size={18} />
               </button>
             )}
           </div>
         </div>
 
-        {/* RESULTADOS DA BUSCA GLOBAL (Exibidos apenas quando houver termo de busca) */}
         {globalSearchTerm ? (
-          <div style={{ width: '100%', maxWidth: '1000px', overflowX: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '30px' }}>
-            <h3 style={{ padding: '15px 20px', margin: 0, backgroundColor: '#f1f5f9', color: '#334155', borderBottom: '1px solid #e2e8f0' }}>
-              Resultados da busca ("{globalSearchTerm}"): {filteredGlobalProducts.length} encontrado(s)
+          <div style={{ width: '100%', maxWidth: '900px', overflowX: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+            <h3 style={{ padding: '12px 15px', margin: 0, backgroundColor: '#f1f5f9', color: '#334155', borderBottom: '1px solid #e2e8f0', fontSize: '14px' }}>
+              Resultados ({filteredGlobalProducts.length})
             </h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#1e293b', color: 'white', fontSize: '14px' }}>
-                  <th style={{ padding: '12px' }}>Marca</th>
-                  <th style={{ padding: '12px' }}>Produto</th>
-                  <th style={{ padding: '12px' }}>À Vista</th>
-                  <th style={{ padding: '12px' }}>À Prazo</th>
-                  <th style={{ padding: '12px' }}>Valor M</th>
-                  <th style={{ padding: '12px' }}>Valor M²</th>
-                  <th style={{ padding: '12px' }}>Largura</th>
-                  <th style={{ padding: '12px' }}>Gram.</th>
-                  <th style={{ padding: '12px' }}>Composição</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGlobalProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
-                      Nenhum produto encontrado para a busca realizada.
-                    </td>
+            <div style={{ overflowX: 'auto', width: '100%' }}>
+              <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#1e293b', color: 'white' }}>
+                    <th style={{ padding: '10px' }}>Marca</th>
+                    <th style={{ padding: '10px' }}>Produto</th>
+                    <th style={{ padding: '10px' }}>À Vista</th>
+                    <th style={{ padding: '10px' }}>À Prazo</th>
+                    <th style={{ padding: '10px' }}>Valor M</th>
+                    <th style={{ padding: '10px' }}>Valor M²</th>
+                    <th style={{ padding: '10px' }}>Largura</th>
+                    <th style={{ padding: '10px' }}>Gram.</th>
+                    <th style={{ padding: '10px' }}>Composição</th>
                   </tr>
-                ) : (
-                  filteredGlobalProducts.map((p) => (
-                    <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{ backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
-                          {p.marca?.toUpperCase()}
-                        </span>
+                </thead>
+                <tbody>
+                  {filteredGlobalProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} style={{ padding: '15px', textAlign: 'center', color: '#64748b' }}>
+                        Nenhum produto encontrado.
                       </td>
-                      <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.nome}</td>
-                      <td style={{ padding: '12px', color: p.marca === 'manatex' ? '#059669' : '#111827', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
-                      <td style={{ padding: '12px' }}>{formatMoeda(p.a_prazo)}</td>
-                      <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m)}</td>
-                      <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m2)}</td>
-                      <td style={{ padding: '12px' }}>{formatNumero(p.largura, 'm')}</td>
-                      <td style={{ padding: '12px' }}>{formatNumero(p.gramatura, 'g')}</td>
-                      <td style={{ padding: '12px', fontSize: '13px' }}>{p.composicao}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredGlobalProducts.map((p) => (
+                      <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '10px' }}>
+                          <span style={{ backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '3px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                            {p.marca?.toUpperCase()}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px', fontWeight: 'bold' }}>{p.nome}</td>
+                        <td style={{ padding: '10px', color: p.marca === 'manatex' ? '#059669' : '#111827', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
+                        <td style={{ padding: '10px' }}>{formatMoeda(p.a_prazo)}</td>
+                        <td style={{ padding: '10px' }}>{formatMoeda(p.valor_m)}</td>
+                        <td style={{ padding: '10px' }}>{formatMoeda(p.valor_m2)}</td>
+                        <td style={{ padding: '10px' }}>{formatNumero(p.largura, 'm')}</td>
+                        <td style={{ padding: '10px' }}>{formatNumero(p.gramatura, 'g')}</td>
+                        <td style={{ padding: '10px', fontSize: '12px' }}>{p.composicao}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <>
-            <h2 style={{ color: '#1e293b', marginBottom: '20px' }}>Ou selecione a marca para ver a tabela completa:</h2>
-            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px', width: '100%' }}>
+            <h2 style={{ color: '#1e293b', marginBottom: '15px', fontSize: '16px', textAlign: 'center' }}>Selecione a marca para ver a tabela:</h2>
+            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '900px', width: '100%' }}>
               <div 
                 onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }}
-                style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <img src="/mana.jpg" alt="Manatex Têxtil" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px' }} />
-                <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos Manatex</p>
+                style={{ flex: '1 1 260px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '20px 15px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+                <img src="/mana.jpg" alt="Manatex Têxtil" style={{ maxHeight: '50px', maxWidth: '100%', objectFit: 'contain', marginBottom: '10px' }} />
+                <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>Tabela de produtos Manatex</p>
               </div>
 
               <div 
                 onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }}
-                style={{ flex: '1 1 300px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px', backgroundColor: 'white', padding: '5px', borderRadius: '4px' }} />
-                <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos MSports</p>
+                style={{ flex: '1 1 260px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '20px 15px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+                <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '50px', maxWidth: '100%', objectFit: 'contain', marginBottom: '10px', backgroundColor: 'white', padding: '4px', borderRadius: '4px' }} />
+                <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Tabela de produtos MSports</p>
               </div>
             </div>
           </>
@@ -575,183 +537,199 @@ export default function App() {
     )
   }
 
-  // 4. PAINEL PRINCIPAL DE PRODUTOS/USUÁRIOS
+  // PAINEL DE PRODUTOS E USUÁRIOS
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px' }}>
-      <header style={{ backgroundColor: brandColor, color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px', boxSizing: 'border-box' }}>
+      
+      {/* HEADER RESPONSIVO PARA CELULAR */}
+      <header style={{ 
+        backgroundColor: brandColor, 
+        color: 'white', 
+        padding: '12px 15px', 
+        borderRadius: '10px', 
+        display: 'flex', 
+        flexDirection: 'row',
+        flexWrap: 'wrap', 
+        justify: 'space-between', 
+        alignItems: 'center', 
+        gap: '10px', 
+        marginBottom: '15px' 
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {selectedBrand && (
             <button 
               onClick={() => setSelectedBrand(null)} 
-              title="Voltar para seleção de marcas"
-              style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              <ArrowLeft size={20} />
+              title="Voltar"
+              style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <ArrowLeft size={18} />
             </button>
           )}
           <div>
-            <h1 style={{ margin: 0, fontSize: '20px' }}>
-              {activeTab === 'users' ? 'Gerenciamento de Usuários' : `Tabela ${selectedBrand?.toUpperCase()}`}
+            <h1 style={{ margin: 0, fontSize: '16px', lineHeight: '1.2' }}>
+              {activeTab === 'users' ? 'Usuários' : `Tabela ${selectedBrand?.toUpperCase()}`}
             </h1>
-            <span style={{ fontSize: '12px', opacity: 0.9 }}>
-              Nível: <strong>{profile?.role === 'admin' ? 'Administrador' : 'Usuário'}</strong>
+            <span style={{ fontSize: '11px', opacity: 0.85 }}>
+              Perfil: <strong>{profile?.role === 'admin' ? 'Admin' : 'Usuário'}</strong>
             </span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginLeft: 'auto' }}>
           {profile?.role === 'admin' && (
             <>
               {selectedBrand && (
                 <button 
                   onClick={() => setActiveTab('products')} 
-                  style={{ backgroundColor: activeTab === 'products' ? 'rgba(255,255,255,0.2)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer' }}>
+                  style={{ backgroundColor: activeTab === 'products' ? 'rgba(255,255,255,0.25)' : 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.5)', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                   Produtos
                 </button>
               )}
               <button 
                 onClick={() => setActiveTab('users')} 
-                style={{ backgroundColor: activeTab === 'users' ? 'rgba(255,255,255,0.2)' : 'transparent', color: 'white', border: '1px solid white', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <Users size={16} /> Usuários
+                style={{ backgroundColor: activeTab === 'users' ? 'rgba(255,255,255,0.25)' : 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.5)', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                <Users size={14} /> Usuários
               </button>
               {activeTab === 'products' && selectedBrand && (
-                <button onClick={() => openModal()} style={{ backgroundColor: 'white', color: isManatex ? '#059669' : '#111827', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <Plus size={16} /> Novo Produto ({selectedBrand.toUpperCase()})
+                <button onClick={() => openModal()} style={{ backgroundColor: 'white', color: isManatex ? '#059669' : '#111827', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                  <Plus size={14} /> Novo
                 </button>
               )}
             </>
           )}
 
-          <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <LogOut size={16} /> Sair
+          <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+            <LogOut size={14} /> Sair
           </button>
         </div>
       </header>
 
       {/* ABA DE USUÁRIOS */}
       {activeTab === 'users' && profile?.role === 'admin' ? (
-        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+        <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h2 style={{ margin: 0, fontSize: '18px', color: '#1e293b' }}>Usuários e Permissões</h2>
-            <button onClick={() => { setActiveTab('products'); if(!selectedBrand) setSelectedBrand('manatex'); }} style={{ color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-              Voltar para Produtos
+            <h2 style={{ margin: 0, fontSize: '16px', color: '#1e293b' }}>Usuários e Permissões</h2>
+            <button onClick={() => { setActiveTab('products'); if(!selectedBrand) setSelectedBrand('manatex'); }} style={{ color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+              Voltar
             </button>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#111827', color: 'white', fontSize: '14px' }}>
-                <th style={{ padding: '12px' }}>E-mail</th>
-                <th style={{ padding: '12px' }}>Perfil (Role)</th>
-                <th style={{ padding: '12px' }}>Status</th>
-                <th style={{ padding: '12px', textAlign: 'center' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {usersList.map((u) => (
-                <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '12px', fontWeight: 'bold' }}>{u.email}</td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={{ backgroundColor: u.role === 'admin' ? '#dbeafe' : '#f3f4f6', color: u.role === 'admin' ? '#1e40af' : '#374151', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
-                      {u.role.toUpperCase()}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px' }}>
-                    <span style={{ color: u.approved ? '#059669' : '#dc2626', fontWeight: 'bold', fontSize: '13px' }}>
-                      {u.approved ? 'Autorizado' : 'Pendente'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                    <button 
-                      onClick={() => toggleApproval(u.id, u.approved)} 
-                      style={{ backgroundColor: u.approved ? '#fee2e2' : '#dcfce7', color: u.approved ? '#991b1b' : '#166534', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}>
-                      {u.approved ? 'Bloquear / Revogar' : 'Autorizar Acesso'}
-                    </button>
-                    <button 
-                      onClick={() => toggleRole(u.id, u.role)} 
-                      style={{ backgroundColor: '#f3f4f6', color: '#1f2937', border: '1px solid #ccc', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-                      Mudar para {u.role === 'admin' ? 'Usuário' : 'Admin'}
-                    </button>
-                  </td>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#111827', color: 'white' }}>
+                  <th style={{ padding: '10px' }}>E-mail</th>
+                  <th style={{ padding: '10px' }}>Perfil</th>
+                  <th style={{ padding: '10px' }}>Status</th>
+                  <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {usersList.map((u) => (
+                  <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '10px', fontWeight: 'bold' }}>{u.email}</td>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{ backgroundColor: u.role === 'admin' ? '#dbeafe' : '#f3f4f6', color: u.role === 'admin' ? '#1e40af' : '#374151', padding: '3px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                        {u.role.toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{ color: u.approved ? '#059669' : '#dc2626', fontWeight: 'bold', fontSize: '12px' }}>
+                        {u.approved ? 'Autorizado' : 'Pendente'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                      <button 
+                        onClick={() => toggleApproval(u.id, u.approved)} 
+                        style={{ backgroundColor: u.approved ? '#fee2e2' : '#dcfce7', color: u.approved ? '#991b1b' : '#166534', border: 'none', padding: '5px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
+                        {u.approved ? 'Bloquear' : 'Autorizar'}
+                      </button>
+                      <button 
+                        onClick={() => toggleRole(u.id, u.role)} 
+                        style={{ backgroundColor: '#f3f4f6', color: '#1f2937', border: '1px solid #ccc', padding: '5px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                        Mudar Perfil
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         /* ABA DE PRODUTOS */
         <>
-          <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
-              <Search size={18} style={{ position: 'absolute', left: '10px', top: '12px', color: '#888' }} />
+          <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+            <div style={{ position: 'relative', flex: '1 1 200px', width: '100%' }}>
+              <Search size={18} style={{ position: 'absolute', left: '10px', top: '10px', color: '#888' }} />
               <input
                 type="text"
-                placeholder={`Buscar produtos ${selectedBrand?.toUpperCase()}...`}
+                placeholder={`Buscar em ${selectedBrand?.toUpperCase()}...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ width: '100%', padding: '10px 10px 10px 35px', borderRadius: '6px', border: '1px solid #ccc', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '8px 8px 8px 35px', borderRadius: '6px', border: '1px solid #ccc', outline: 'none', boxSizing: 'border-box', fontSize: '14px' }}
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%', maxWidth: '100%', justifyContent: 'flex-start' }}>
               <button 
                 onClick={handleExportExcel}
-                style={{ backgroundColor: '#16a34a', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Download size={16} /> Exportar Excel
+                style={{ flex: '1 1 auto', backgroundColor: '#16a34a', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                <Download size={15} /> Exportar Excel
               </button>
               <button 
                 onClick={() => setSelectedBrand(null)} 
-                style={{ backgroundColor: '#e2e8f0', color: '#334155', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
+                style={{ flex: '1 1 auto', backgroundColor: '#e2e8f0', color: '#334155', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}>
                 Trocar Marca
               </button>
             </div>
           </div>
 
           {loading ? (
-            <p>Carregando produtos...</p>
+            <p style={{ textAlign: 'center', color: '#64748b' }}>Carregando produtos...</p>
           ) : (
-            <div style={{ overflowX: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <div style={{ overflowX: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', width: '100%' }}>
+              <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ backgroundColor: isManatex ? '#059669' : '#111827', color: 'white', fontSize: '14px' }}>
-                    <th style={{ padding: '12px' }}>Produto</th>
-                    <th style={{ padding: '12px' }}>À Vista</th>
-                    <th style={{ padding: '12px' }}>À Prazo</th>
-                    <th style={{ padding: '12px' }}>Valor M</th>
-                    <th style={{ padding: '12px' }}>Valor M²</th>
-                    <th style={{ padding: '12px' }}>Largura</th>
-                    <th style={{ padding: '12px' }}>Gram.</th>
-                    <th style={{ padding: '12px' }}>Rend. M</th>
-                    <th style={{ padding: '12px' }}>Rend. M²</th>
-                    <th style={{ padding: '12px' }}>Composição</th>
-                    {profile?.role === 'admin' && <th style={{ padding: '12px', textAlign: 'center' }}>Ações</th>}
+                  <tr style={{ backgroundColor: isManatex ? '#059669' : '#111827', color: 'white' }}>
+                    <th style={{ padding: '10px' }}>Produto</th>
+                    <th style={{ padding: '10px' }}>À Vista</th>
+                    <th style={{ padding: '10px' }}>À Prazo</th>
+                    <th style={{ padding: '10px' }}>Valor M</th>
+                    <th style={{ padding: '10px' }}>Valor M²</th>
+                    <th style={{ padding: '10px' }}>Largura</th>
+                    <th style={{ padding: '10px' }}>Gram.</th>
+                    <th style={{ padding: '10px' }}>Rend. M</th>
+                    <th style={{ padding: '10px' }}>Rend. M²</th>
+                    <th style={{ padding: '10px' }}>Composição</th>
+                    {profile?.role === 'admin' && <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredProducts.length === 0 ? (
                     <tr>
-                      <td colSpan={11} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
-                        Nenhum produto cadastrado para a marca <strong>{selectedBrand?.toUpperCase()}</strong>.
+                      <td colSpan={11} style={{ padding: '15px', textAlign: 'center', color: '#64748b' }}>
+                        Nenhum produto cadastrado para <strong>{selectedBrand?.toUpperCase()}</strong>.
                       </td>
                     </tr>
                   ) : (
                     filteredProducts.map((p) => (
                       <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.nome}</td>
-                        <td style={{ padding: '12px', color: isManatex ? '#059669' : '#111827', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
-                        <td style={{ padding: '12px' }}>{formatMoeda(p.a_prazo)}</td>
-                        <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m)}</td>
-                        <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m2)}</td>
-                        <td style={{ padding: '12px' }}>{formatNumero(p.largura, 'm')}</td>
-                        <td style={{ padding: '12px' }}>{formatNumero(p.gramatura, 'g')}</td>
-                        <td style={{ padding: '12px' }}>{formatNumero(p.rendimento_m, 'm')}</td>
-                        <td style={{ padding: '12px' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
-                        <td style={{ padding: '12px', fontSize: '13px' }}>{p.composicao}</td>
+                        <td style={{ padding: '10px', fontWeight: 'bold' }}>{p.nome}</td>
+                        <td style={{ padding: '10px', color: isManatex ? '#059669' : '#111827', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
+                        <td style={{ padding: '10px' }}>{formatMoeda(p.a_prazo)}</td>
+                        <td style={{ padding: '10px' }}>{formatMoeda(p.valor_m)}</td>
+                        <td style={{ padding: '10px' }}>{formatMoeda(p.valor_m2)}</td>
+                        <td style={{ padding: '10px' }}>{formatNumero(p.largura, 'm')}</td>
+                        <td style={{ padding: '10px' }}>{formatNumero(p.gramatura, 'g')}</td>
+                        <td style={{ padding: '10px' }}>{formatNumero(p.rendimento_m, 'm')}</td>
+                        <td style={{ padding: '10px' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
+                        <td style={{ padding: '10px', fontSize: '12px' }}>{p.composicao}</td>
                         {profile?.role === 'admin' && (
-                          <td style={{ padding: '12px', textAlign: 'center' }}>
-                            <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', marginRight: '8px' }}>
-                              <Edit2 size={16} />
+                          <td style={{ padding: '10px', textAlign: 'center' }}>
+                            <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', marginRight: '6px' }}>
+                              <Edit2 size={15} />
                             </button>
                             <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626' }}>
-                              <Trash2 size={16} />
+                              <Trash2 size={15} />
                             </button>
                           </td>
                         )}
@@ -765,12 +743,12 @@ export default function App() {
         </>
       )}
 
-      {/* Modal Cadastro/Edição de Produto */}
+      {/* MODAL ADAPTADO PARA DISPOSITIVOS MÓVEIS */}
       {isModalOpen && profile?.role === 'admin' && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>
                 {editingId ? 'Editar Produto' : `Novo Produto (${selectedBrand?.toUpperCase()})`}
               </h3>
               <button onClick={closeModal} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
