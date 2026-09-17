@@ -38,8 +38,10 @@ export default function App() {
 
   // Produtos
   const [products, setProducts] = useState([])
+  const [allProducts, setAllProducts] = useState([]) // Armazena produtos de AMBAS as marcas para a busca geral
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [globalSearchTerm, setGlobalSearchTerm] = useState('') // Busca na tela de seleção
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
@@ -70,30 +72,22 @@ export default function App() {
 
   // 1. Monitorar Autenticação e Perfil
   useEffect(() => {
-  // 1. Captura o parâmetro do link enviado por e-mail antes do render
-  const hash = window.location.hash
-  if (hash && hash.includes('type=recovery')) {
-    setIsResettingPassword(true)
-  }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      if (session) fetchUserProfile(session.user.id)
+    })
 
-  // 2. Busca a sessão atual
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    setSession(session)
-    if (session) fetchUserProfile(session.user.id)
-  })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session)
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResettingPassword(true)
+      }
+      if (session) fetchUserProfile(session.user.id)
+      else setProfile(null)
+    })
 
-  // 3. Ouve as mudanças no estado de autenticação
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    setSession(session)
-    if (event === 'PASSWORD_RECOVERY') {
-      setIsResettingPassword(true)
-    }
-    if (session) fetchUserProfile(session.user.id)
-    else setProfile(null)
-  })
-
-  return () => subscription.unsubscribe()
-}, [])
+    return () => subscription.unsubscribe()
+  }, [])
 
   // Buscar perfil do usuário logado
   const fetchUserProfile = async (userId) => {
@@ -119,7 +113,7 @@ export default function App() {
     }
   }
 
-  // Buscar Produtos
+  // Buscar Produtos de Uma Marca Específica
   const fetchProducts = async () => {
     if (!selectedBrand) return
     setLoading(true)
@@ -131,6 +125,16 @@ export default function App() {
 
     if (!error) setProducts(data || [])
     setLoading(false)
+  }
+
+  // Buscar Todos os Produtos (Manatex + MSports) para a Busca Global
+  const fetchAllProducts = async () => {
+    const { data, error } = await supabase
+      .from('produtos')
+      .select('*')
+      .order('nome', { ascending: true })
+
+    if (!error) setAllProducts(data || [])
   }
 
   // Buscar Todos os Usuários (Apenas Admin)
@@ -145,6 +149,7 @@ export default function App() {
 
   useEffect(() => {
     if (session && profile?.approved) {
+      fetchAllProducts() // Carrega todos os produtos para busca global
       if (selectedBrand) fetchProducts()
       if (profile?.role === 'admin') fetchUsers()
     }
@@ -188,22 +193,21 @@ export default function App() {
   }
 
   // Atualizar senha com o link do e-mail
- const handleUpdatePassword = async (e) => {
-  e.preventDefault()
-  setAuthError('')
-  setAuthMessage('')
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault()
+    setAuthError('')
+    setAuthMessage('')
 
-  const { error } = await supabase.auth.updateUser({ password: newPassword })
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
 
-  if (error) {
-    setAuthError('Erro ao redefinir a senha: ' + error.message)
-  } else {
-    alert('Senha alterada com sucesso!')
-    window.location.hash = '' // Limpa o token da URL
-    setIsResettingPassword(false)
-    setNewPassword('')
+    if (error) {
+      setAuthError('Erro ao redefinir a senha: ' + error.message)
+    } else {
+      setAuthMessage('Senha alterada com sucesso!')
+      setIsResettingPassword(false)
+      setNewPassword('')
+    }
   }
-}
 
   const handleLogout = () => {
     setSelectedBrand(null)
@@ -285,12 +289,14 @@ export default function App() {
 
     closeModal()
     fetchProducts()
+    fetchAllProducts()
   }
 
   const handleDelete = async (id) => {
     if (confirm("Deseja realmente excluir este produto?")) {
       await supabase.from('produtos').delete().eq('id', id)
       fetchProducts()
+      fetchAllProducts()
     }
   }
 
@@ -321,9 +327,16 @@ export default function App() {
     setEditingId(null)
   }
 
+  // Filtro de produtos por marca selecionada
   const filteredProducts = products.filter(p =>
     p.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.composicao?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  // Filtro de produtos para a BUSCA GLOBAL (Ambas as marcas)
+  const filteredGlobalProducts = allProducts.filter(p =>
+    p.nome?.toLowerCase().includes(globalSearchTerm.toLowerCase()) ||
+    p.composicao?.toLowerCase().includes(globalSearchTerm.toLowerCase())
   )
 
   const isManatex = selectedBrand === 'manatex'
@@ -445,13 +458,13 @@ export default function App() {
     )
   }
 
-  // 3. SELEÇÃO DE MARCA
+  // 3. SELEÇÃO DE MARCA E BUSCA GLOBAL DE PRODUTOS
   if (!selectedBrand && activeTab !== 'users') {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <header style={{ width: '100%', maxWidth: '800px', backgroundColor: '#059669', color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+        <header style={{ width: '100%', maxWidth: '800px', backgroundColor: '#059669', color: 'white', padding: '15px 20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '20px' }}>Selecione a Marca</h1>
+            <h1 style={{ margin: 0, fontSize: '20px' }}>Catálogo Geral</h1>
             <span style={{ fontSize: '12px', opacity: 0.9 }}>
               Nível: <strong>{profile?.role === 'admin' ? 'Administrador' : 'Usuário'}</strong>
             </span>
@@ -470,22 +483,94 @@ export default function App() {
           </div>
         </header>
 
-        <h2 style={{ color: '#1e293b', marginBottom: '30px' }}>Qual tabela de produtos deseja acessar?</h2>
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px', width: '100%' }}>
-          <div 
-            onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }}
-            style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <img src="/mana.jpg" alt="Manatex Têxtil" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px' }} />
-            <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos Manatex</p>
-          </div>
-
-          <div 
-            onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }}
-            style={{ flex: '1 1 300px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px', backgroundColor: 'white', padding: '5px', borderRadius: '4px' }} />
-            <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos MSports</p>
+        {/* CAMPO DE BUSCA GERAL NAS DUAS MARCAS */}
+        <div style={{ width: '100%', maxWidth: '800px', marginBottom: '30px' }}>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <Search size={20} style={{ position: 'absolute', left: '12px', top: '14px', color: '#888' }} />
+            <input
+              type="text"
+              placeholder="Buscar produto nas duas marcas (Manatex e MSports)..."
+              value={globalSearchTerm}
+              onChange={(e) => setGlobalSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '12px 40px 12px 40px', borderRadius: '8px', border: '2px solid #059669', outline: 'none', boxSizing: 'border-box', fontSize: '15px' }}
+            />
+            {globalSearchTerm && (
+              <button onClick={() => setGlobalSearchTerm('')} style={{ position: 'absolute', right: '12px', top: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}>
+                <X size={20} />
+              </button>
+            )}
           </div>
         </div>
+
+        {/* RESULTADOS DA BUSCA GLOBAL (Exibidos apenas quando houver termo de busca) */}
+        {globalSearchTerm ? (
+          <div style={{ width: '100%', maxWidth: '1000px', overflowX: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '30px' }}>
+            <h3 style={{ padding: '15px 20px', margin: 0, backgroundColor: '#f1f5f9', color: '#334155', borderBottom: '1px solid #e2e8f0' }}>
+              Resultados da busca ("{globalSearchTerm}"): {filteredGlobalProducts.length} encontrado(s)
+            </h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#1e293b', color: 'white', fontSize: '14px' }}>
+                  <th style={{ padding: '12px' }}>Marca</th>
+                  <th style={{ padding: '12px' }}>Produto</th>
+                  <th style={{ padding: '12px' }}>À Vista</th>
+                  <th style={{ padding: '12px' }}>À Prazo</th>
+                  <th style={{ padding: '12px' }}>Valor M</th>
+                  <th style={{ padding: '12px' }}>Valor M²</th>
+                  <th style={{ padding: '12px' }}>Largura</th>
+                  <th style={{ padding: '12px' }}>Gram.</th>
+                  <th style={{ padding: '12px' }}>Composição</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredGlobalProducts.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                      Nenhum produto encontrado para a busca realizada.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredGlobalProducts.map((p) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '12px' }}>
+                        <span style={{ backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+                          {p.marca?.toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.nome}</td>
+                      <td style={{ padding: '12px', color: p.marca === 'manatex' ? '#059669' : '#111827', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
+                      <td style={{ padding: '12px' }}>{formatMoeda(p.a_prazo)}</td>
+                      <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m)}</td>
+                      <td style={{ padding: '12px' }}>{formatMoeda(p.valor_m2)}</td>
+                      <td style={{ padding: '12px' }}>{formatNumero(p.largura, 'm')}</td>
+                      <td style={{ padding: '12px' }}>{formatNumero(p.gramatura, 'g')}</td>
+                      <td style={{ padding: '12px', fontSize: '13px' }}>{p.composicao}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <>
+            <h2 style={{ color: '#1e293b', marginBottom: '20px' }}>Ou selecione a marca para ver a tabela completa:</h2>
+            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '800px', width: '100%' }}>
+              <div 
+                onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }}
+                style={{ flex: '1 1 300px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <img src="/mana.jpg" alt="Manatex Têxtil" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px' }} />
+                <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos Manatex</p>
+              </div>
+
+              <div 
+                onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }}
+                style={{ flex: '1 1 300px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '30px 20px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain', marginBottom: '15px', backgroundColor: 'white', padding: '5px', borderRadius: '4px' }} />
+                <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Clique para acessar a tabela de produtos MSports</p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     )
   }
