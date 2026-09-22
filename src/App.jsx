@@ -60,7 +60,7 @@ export default function App() {
     return Math.round(parsed * 100) / 100
   }
 
-  // Função para recalcular À Prazo, Valor M e Valor M² com base em À Vista e Rendimentos
+  // --- LÓGICA DE CÁLCULO AUTOMÁTICO ---
   const recalcularValores = (aVistaVal, rendMVal, rendM2Val) => {
     const aVista = parseInputValue(aVistaVal)
     const rendM = parseInputValue(rendMVal)
@@ -333,16 +333,24 @@ export default function App() {
   const openModal = (product = null) => {
     if (product) {
       setEditingId(product.id)
+      
+      const aVistaStr = product.a_vista !== null && product.a_vista !== undefined ? String(product.a_vista).replace('.', ',') : ''
+      const rendMStr = product.rendimento_m !== null && product.rendimento_m !== undefined ? String(product.rendimento_m).replace('.', ',') : ''
+      const rendM2Str = product.rendimento_m2 !== null && product.rendimento_m2 !== undefined ? String(product.rendimento_m2).replace('.', ',') : ''
+
+      // Recalcula derivados ao abrir modal de edição se necessário
+      const { aPrazo, valorM, valorM2 } = recalcularValores(aVistaStr, rendMStr, rendM2Str)
+
       setFormData({
         nome: product.nome || '',
-        a_vista: product.a_vista !== null && product.a_vista !== undefined ? String(product.a_vista).replace('.', ',') : '',
-        a_prazo: product.a_prazo !== null && product.a_prazo !== undefined ? String(product.a_prazo).replace('.', ',') : '',
-        valor_m: product.valor_m !== null && product.valor_m !== undefined ? String(product.valor_m).replace('.', ',') : '',
-        valor_m2: product.valor_m2 !== null && product.valor_m2 !== undefined ? String(product.valor_m2).replace('.', ',') : '',
+        a_vista: aVistaStr,
+        a_prazo: product.a_prazo !== null && product.a_prazo !== undefined ? String(product.a_prazo).replace('.', ',') : aPrazo,
+        valor_m: product.valor_m !== null && product.valor_m !== undefined ? String(product.valor_m).replace('.', ',') : valorM,
+        valor_m2: product.valor_m2 !== null && product.valor_m2 !== undefined ? String(product.valor_m2).replace('.', ',') : valorM2,
         largura: product.largura !== null && product.largura !== undefined ? String(product.largura).replace('.', ',') : '',
         gramatura: product.gramatura !== null && product.gramatura !== undefined ? String(product.gramatura).replace('.', ',') : '',
-        rendimento_m: product.rendimento_m !== null && product.rendimento_m !== undefined ? String(product.rendimento_m).replace('.', ',') : '',
-        rendimento_m2: product.rendimento_m2 !== null && product.rendimento_m2 !== undefined ? String(product.rendimento_m2).replace('.', ',') : '',
+        rendimento_m: rendMStr,
+        rendimento_m2: rendM2Str,
         composicao: product.composicao || ''
       })
     } else {
@@ -627,7 +635,7 @@ export default function App() {
         display: 'flex', 
         flexDirection: 'row',
         flexWrap: 'wrap', 
-        justify: 'space-between', 
+        justifyContent: 'space-between', 
         alignItems: 'center', 
         gap: '10px', 
         marginBottom: '15px' 
@@ -828,7 +836,7 @@ export default function App() {
         </>
       )}
 
-      {/* MODAL RESPONSIVO */}
+      {/* MODAL RESPONSIVO COM CÁLCULO AUTOMÁTICO */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' }}>
@@ -849,7 +857,7 @@ export default function App() {
                   <input type="text" value={formData.a_vista} onChange={handleAVistaChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Prazo (+6%)</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Prazo (R$)</label>
                   <input type="text" value={formData.a_prazo} onChange={e => setFormData({...formData, a_prazo: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
