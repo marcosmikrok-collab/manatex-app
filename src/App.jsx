@@ -530,49 +530,67 @@ export default function App() {
         />
       </div>
 
-      {/* TABELA DETALHADA COM TODAS AS COLUNAS */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', overflowX: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', whiteSpace: 'nowrap' }}>
+      {/* TABELA DETALHADA COM AJUSTE DE LARGURA FIXA E QUEBRA DE TEXTO */}
+      <div style={{ backgroundColor: 'white', borderRadius: '8px', overflowX: 'hidden', width: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '11px' }}>
+          
+          {/* DEFINIÇÃO DAS LARGURAS DAS COLUNAS EM % */}
+          <colgroup>
+            <col style={{ width: '12%' }} /> {/* Produto */}
+            <col style={{ width: '5%' }} />  {/* Cores */}
+            <col style={{ width: '6%' }} />  {/* À Vista */}
+            <col style={{ width: '6%' }} />  {/* À Prazo (+6%) */}
+            <col style={{ width: '5%' }} />  {/* Valor M */}
+            <col style={{ width: '5%' }} />  {/* Valor M² */}
+            <col style={{ width: '5%' }} />  {/* Rend. M */}
+            <col style={{ width: '5%' }} />  {/* Rend. M² */}
+            <col style={{ width: '5%' }} />  {/* Gramatura */}
+            <col style={{ width: '5%' }} />  {/* Largura */}
+            <col style={{ width: '9%' }} />  {/* Composição */}
+            <col style={{ width: profile?.role === 'admin' ? '25%' : '32%' }} /> {/* Tecnologias */}
+            {profile?.role === 'admin' && <col style={{ width: '7%' }} />} {/* Ações */}
+          </colgroup>
+
           <thead>
             <tr style={{ backgroundColor: brandColor, color: 'white', textAlign: 'left' }}>
-              <th style={{ padding: '10px 12px' }}>Produto</th>
-              <th style={{ padding: '10px 12px' }}>Cores</th>
-              <th style={{ padding: '10px 12px' }}>À Vista</th>
-              <th style={{ padding: '10px 12px' }}>À Prazo (+6%)</th>
-              <th style={{ padding: '10px 12px' }}>Valor M</th>
-              <th style={{ padding: '10px 12px' }}>Valor M²</th>
-              <th style={{ padding: '10px 12px' }}>Rend. M</th>
-              <th style={{ padding: '10px 12px' }}>Rend. M²</th>
-              <th style={{ padding: '10px 12px' }}>Gramatura</th>
-              <th style={{ padding: '10px 12px' }}>Largura</th>
-              <th style={{ padding: '10px 12px' }}>Composição</th>
-              <th style={{ padding: '10px 12px' }}>Tecnologias</th>
-              {profile?.role === 'admin' && <th style={{ padding: '10px 12px', textAlign: 'center' }}>Ações</th>}
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Produto</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Cores</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>À Vista</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>À Prazo (+6%)</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Valor M</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Valor M²</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Rend. M</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Rend. M²</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Gramatura</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Largura</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Composição</th>
+              <th style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>Tecnologias</th>
+              {profile?.role === 'admin' && <th style={{ padding: '10px 6px', textAlign: 'center', wordBreak: 'break-word', whiteSpace: 'normal' }}>Ações</th>}
             </tr>
           </thead>
           <tbody>
             {filteredProducts.map((p, idx) => (
               <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#0f172a' }}>{p.nome}</td>
-                <td style={{ padding: '10px 12px' }}>
-                  <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', maxWidth: '90px' }}>
+                <td style={{ padding: '10px 6px', fontWeight: 'bold', color: '#0f172a', wordBreak: 'break-word', whiteSpace: 'normal' }}>{p.nome}</td>
+                <td style={{ padding: '10px 6px', wordBreak: 'break-word', whiteSpace: 'normal' }}>
+                  <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', maxWidth: '60px' }}>
                     {p.produto_cores?.map((c) => (
-                      <span key={c.id} title={c.nome_cor} style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: c.codigo_hex, border: '1px solid #cbd5e1', display: 'inline-block' }} />
+                      <span key={c.id} title={c.nome_cor} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: c.codigo_hex, border: '1px solid #cbd5e1', display: 'inline-block' }} />
                     ))}
                   </div>
                 </td>
-                <td style={{ padding: '10px 12px', color: '#059669', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
-                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</td>
-                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatMoeda(p.valor_m)}</td>
-                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatMoeda(p.valor_m2)}</td>
-                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</td>
-                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
-                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.gramatura, 'g')}</td>
-                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.largura, 'm')}</td>
-                <td style={{ padding: '10px 12px', color: '#64748b' }}>{p.composicao || '-'}</td>
-                <td style={{ padding: '10px 12px', color: '#047857', fontWeight: 'bold' }}>{p.tecnologias || '-'}</td>
+                <td style={{ padding: '10px 6px', color: '#059669', fontWeight: 'bold', wordBreak: 'break-word', whiteSpace: 'normal' }}>{formatMoeda(p.a_vista)}</td>
+                <td style={{ padding: '10px 6px', color: '#334155', wordBreak: 'break-word', whiteSpace: 'normal' }}>{formatMoeda(p.a_prazo)}</td>
+                <td style={{ padding: '10px 6px', color: '#334155', wordBreak: 'break-word', whiteSpace: 'normal' }}>{formatMoeda(p.valor_m)}</td>
+                <td style={{ padding: '10px 6px', color: '#334155', wordBreak: 'break-word', whiteSpace: 'normal' }}>{formatMoeda(p.valor_m2)}</td>
+                <td style={{ padding: '10px 6px', color: '#334155', wordBreak: 'break-word', whiteSpace: 'normal' }}>{formatNumero(p.rendimento_m, 'm')}</td>
+                <td style={{ padding: '10px 6px', color: '#334155', wordBreak: 'break-word', whiteSpace: 'normal' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
+                <td style={{ padding: '10px 6px', color: '#334155', wordBreak: 'break-word', whiteSpace: 'normal' }}>{formatNumero(p.gramatura, 'g')}</td>
+                <td style={{ padding: '10px 6px', color: '#334155', wordBreak: 'break-word', whiteSpace: 'normal' }}>{formatNumero(p.largura, 'm')}</td>
+                <td style={{ padding: '10px 6px', color: '#64748b', wordBreak: 'break-word', whiteSpace: 'normal' }}>{p.composicao || '-'}</td>
+                <td style={{ padding: '10px 6px', color: '#047857', fontWeight: 'bold', wordBreak: 'break-word', whiteSpace: 'normal' }}>{p.tecnologias || '-'}</td>
                 {profile?.role === 'admin' && (
-                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                  <td style={{ padding: '10px 6px', textAlign: 'center', wordBreak: 'break-word', whiteSpace: 'normal' }}>
                     <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', padding: '2px' }}>
                       <Edit2 size={14} />
                     </button>
