@@ -182,7 +182,7 @@ export default function App() {
       rendimento_m2: parseInputValue(formData.rendimento_m2),
       composicao: formData.composicao,
       descricao: formData.descricao,
-      imagem_url: formData.imagem_url, // <-- Adicionado: agora salva o link da imagem principal
+      imagem_url: formData.imagem_url,
       tecnologias: formData.tecnologias,
       conforto_text: formData.conforto_text,
       versatil_text: formData.versatil_text
@@ -378,20 +378,26 @@ export default function App() {
                     )}
 
                     {p.produto_cores && p.produto_cores.length > 0 && (
-  <div style={{ marginTop: '15px', textAlign: 'center' }}>
-    <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
-    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-      {p.produto_cores.map((cor) => (
-        <button
-          key={cor.id}
-          onClick={() => cor.imagem_url && setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor.imagem_url })}
-          title={cor.nome_cor}
-          style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: cor.codigo_hex || '#000', border: currentImage === cor.imagem_url ? '3px solid #059669' : '2px solid white', boxShadow: '0 0 0 1px #cbd5e1', cursor: cor.imagem_url ? 'pointer' : 'default' }}
-        />
-      ))}
-    </div>
-  </div>
-)}
+                      <div style={{ marginTop: '15px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          {p.imagem_url && (
+                            <button onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: p.imagem_url })} style={{ width: '26px', height: '26px', borderRadius: '50%', border: currentImage === p.imagem_url ? '2px solid #059669' : '1px solid #ccc', cursor: 'pointer', backgroundColor: '#fff', fontSize: '9px' }}>
+                              Pad
+                            </button>
+                          )}
+                          {p.produto_cores.map((cor) => (
+                            <button
+                              key={cor.id}
+                              onClick={() => cor.imagem_url && setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor.imagem_url })}
+                              title={cor.nome_cor}
+                              style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: cor.codigo_hex || '#000', border: currentImage === cor.imagem_url ? '3px solid #059669' : '2px solid white', boxShadow: '0 0 0 1px #cbd5e1', cursor: cor.imagem_url ? 'pointer' : 'default' }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* SEÇÃO DE CARACTERÍSTICAS / TECNOLOGIAS */}
                   {(p.tecnologias || p.conforto_text || p.versatil_text) && (
