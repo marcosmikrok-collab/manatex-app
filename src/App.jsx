@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download, KeyRound } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download, KeyRound, Image as ImageIcon } from 'lucide-react'
 
 // Funções de formatação
 const formatMoeda = (valor) => {
@@ -45,7 +45,8 @@ export default function App() {
 
   const [formData, setFormData] = useState({
     nome: '', a_vista: '', a_prazo: '', valor_m: '', valor_m2: '',
-    largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: ''
+    largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
+    descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
   })
 
   const parseInputValue = (val) => {
@@ -60,7 +61,7 @@ export default function App() {
     return Math.round(parsed * 100) / 100
   }
 
-  // --- LÓGICA DE CÁLCULO AUTOMÁTICO ---
+  // --- CÁLCULO AUTOMÁTICO ---
   const recalcularValores = (aVistaVal, rendMVal, rendM2Val) => {
     const aVista = parseInputValue(aVistaVal)
     const rendM = parseInputValue(rendMVal)
@@ -71,17 +72,14 @@ export default function App() {
     let valorM2 = ''
 
     if (aVista !== null && !isNaN(aVista)) {
-      // À Prazo = À Vista + 6%
       const calcPrazo = aVista * 1.06
       aPrazo = calcPrazo.toFixed(2).replace('.', ',')
 
-      // Valor M = À Vista / Rendimento M
       if (rendM && rendM > 0) {
         const calcValorM = aVista / rendM
         valorM = calcValorM.toFixed(2).replace('.', ',')
       }
 
-      // Valor M² = À Vista / Rendimento M²
       if (rendM2 && rendM2 > 0) {
         const calcValorM2 = aVista / rendM2
         valorM2 = calcValorM2.toFixed(2).replace('.', ',')
@@ -299,7 +297,7 @@ export default function App() {
     e.preventDefault()
     const payload = {
       nome: formData.nome,
-      marca: selectedBrand,
+      marca: selectedBrand || 'manatex',
       a_vista: parseInputValue(formData.a_vista),
       a_prazo: parseInputValue(formData.a_prazo),
       valor_m: parseInputValue(formData.valor_m),
@@ -308,7 +306,12 @@ export default function App() {
       gramatura: parseInputValue(formData.gramatura),
       rendimento_m: parseInputValue(formData.rendimento_m),
       rendimento_m2: parseInputValue(formData.rendimento_m2),
-      composicao: formData.composicao
+      composicao: formData.composicao,
+      descricao: formData.descricao,
+      imagem_url: formData.imagem_url,
+      tecnologias: formData.tecnologias,
+      conforto_text: formData.conforto_text,
+      versatil_text: formData.versatil_text
     }
 
     if (editingId) {
@@ -338,7 +341,6 @@ export default function App() {
       const rendMStr = product.rendimento_m !== null && product.rendimento_m !== undefined ? String(product.rendimento_m).replace('.', ',') : ''
       const rendM2Str = product.rendimento_m2 !== null && product.rendimento_m2 !== undefined ? String(product.rendimento_m2).replace('.', ',') : ''
 
-      // Recalcula derivados ao abrir modal de edição se necessário
       const { aPrazo, valorM, valorM2 } = recalcularValores(aVistaStr, rendMStr, rendM2Str)
 
       setFormData({
@@ -351,11 +353,20 @@ export default function App() {
         gramatura: product.gramatura !== null && product.gramatura !== undefined ? String(product.gramatura).replace('.', ',') : '',
         rendimento_m: rendMStr,
         rendimento_m2: rendM2Str,
-        composicao: product.composicao || ''
+        composicao: product.composicao || '',
+        descricao: product.descricao || '',
+        imagem_url: product.imagem_url || '',
+        tecnologias: product.tecnologias || '',
+        conforto_text: product.conforto_text || '',
+        versatil_text: product.versatil_text || ''
       })
     } else {
       setEditingId(null)
-      setFormData({ nome: '', a_vista: '', a_prazo: '', valor_m: '', valor_m2: '', largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '' })
+      setFormData({ 
+        nome: '', a_vista: '', a_prazo: '', valor_m: '', valor_m2: '', 
+        largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
+        descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
+      })
     }
     setIsModalOpen(true)
   }
@@ -372,13 +383,13 @@ export default function App() {
 
   const filteredGlobalProducts = allProducts.filter(p =>
     p.nome?.toLowerCase().includes(globalSearchTerm.toLowerCase()) ||
-    p.composicao?.toLowerCase().includes(globalSearchTerm.toLowerCase())
+    p.composicao?.toLowerCase().includes(globalSearchTerm.toLowerCase()) ||
+    p.descricao?.toLowerCase().includes(globalSearchTerm.toLowerCase())
   )
 
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827'
 
-  // ESTILO DOS THs COM SUPORTE A CABEÇALHO CONGELADO (STICKY)
   const stickyThStyle = {
     padding: '10px',
     position: 'sticky',
@@ -505,10 +516,10 @@ export default function App() {
     )
   }
 
-  // SELEÇÃO DE MARCA / BUSCA GLOBAL
+  // SELEÇÃO DE MARCA / BUSCA GLOBAL COM CARDS DE DESIGN INSPIRADO
   if (!selectedBrand && activeTab !== 'users') {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' }}>
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' }}>
         <header style={{ width: '100%', maxWidth: '900px', backgroundColor: '#059669', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '20px', boxSizing: 'border-box' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '18px' }}>Catálogo Geral</h1>
@@ -530,77 +541,159 @@ export default function App() {
           </div>
         </header>
 
-        <div style={{ width: '100%', maxWidth: '900px', marginBottom: '20px' }}>
+        {/* CAMPO DE BUSCA PRINCIPAL */}
+        <div style={{ width: '100%', maxWidth: '900px', marginBottom: '25px' }}>
           <div style={{ position: 'relative', width: '100%' }}>
-            <Search size={18} style={{ position: 'absolute', left: '12px', top: '13px', color: '#888' }} />
+            <Search size={20} style={{ position: 'absolute', left: '15px', top: '14px', color: '#64748b' }} />
             <input
               type="text"
-              placeholder="Buscar em todas as marcas..."
+              placeholder="Digite o nome do produto ou tecido para buscar..."
               value={globalSearchTerm}
               onChange={(e) => setGlobalSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '10px 35px 10px 38px', borderRadius: '8px', border: '2px solid #059669', outline: 'none', boxSizing: 'border-box', fontSize: '14px' }}
+              style={{ width: '100%', padding: '12px 40px 12px 45px', borderRadius: '10px', border: '2px solid #059669', outline: 'none', boxSizing: 'border-box', fontSize: '15px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
             />
             {globalSearchTerm && (
-              <button onClick={() => setGlobalSearchTerm('')} style={{ position: 'absolute', right: '10px', top: '10px', background: 'none', border: 'none', cursor: 'pointer', color: '#888' }}>
-                <X size={18} />
+              <button onClick={() => setGlobalSearchTerm('')} style={{ position: 'absolute', right: '12px', top: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <X size={20} />
               </button>
             )}
           </div>
         </div>
 
+        {/* EXIBIÇÃO EM CARD MODERNO (INSPIRADO NA IMAGEM ENVIADA) */}
         {globalSearchTerm ? (
-          <div style={{ width: '100%', maxWidth: '900px', maxHeight: 'calc(100vh - 220px)', overflow: 'auto', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-            <h3 style={{ padding: '12px 15px', margin: 0, backgroundColor: '#f1f5f9', color: '#334155', borderBottom: '1px solid #e2e8f0', fontSize: '14px', position: 'sticky', top: 0, zIndex: 11 }}>
-              Resultados ({filteredGlobalProducts.length})
-            </h3>
-            <div style={{ overflowX: 'auto', width: '100%' }}>
-              <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Marca</th>
-                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Produto</th>
-                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>À Vista</th>
-                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>À Prazo</th>
-                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Valor M</th>
-                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Valor M²</th>
-                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Largura</th>
-                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Gram.</th>
-                    <th style={{ ...stickyThStyle, backgroundColor: '#1e293b' }}>Composição</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredGlobalProducts.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} style={{ padding: '15px', textAlign: 'center', color: '#64748b' }}>
-                        Nenhum produto encontrado.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredGlobalProducts.map((p) => (
-                      <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '10px' }}>
-                          <span style={{ backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '3px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
-                            {p.marca?.toUpperCase()}
-                          </span>
-                        </td>
-                        <td style={{ padding: '10px', fontWeight: 'bold' }}>{p.nome}</td>
-                        <td style={{ padding: '10px', color: p.marca === 'manatex' ? '#059669' : '#111827', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
-                        <td style={{ padding: '10px' }}>{formatMoeda(p.a_prazo)}</td>
-                        <td style={{ padding: '10px' }}>{formatMoeda(p.valor_m)}</td>
-                        <td style={{ padding: '10px' }}>{formatMoeda(p.valor_m2)}</td>
-                        <td style={{ padding: '10px' }}>{formatNumero(p.largura, 'm')}</td>
-                        <td style={{ padding: '10px' }}>{formatNumero(p.gramatura, 'g')}</td>
-                        <td style={{ padding: '10px', fontSize: '12px' }}>{p.composicao}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+          <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '25px', marginBottom: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 5px' }}>
+              <h3 style={{ margin: 0, color: '#334155', fontSize: '15px', fontWeight: '600' }}>
+                Resultados encontrados: {filteredGlobalProducts.length}
+              </h3>
             </div>
+
+            {filteredGlobalProducts.length === 0 ? (
+              <div style={{ backgroundColor: 'white', padding: '30px', textAlign: 'center', borderRadius: '12px', border: '1px border #e2e8f0', color: '#64748b' }}>
+                Nenhum produto encontrado para "{globalSearchTerm}".
+              </div>
+            ) : (
+              filteredGlobalProducts.map((p) => (
+                <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '25px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
+                  
+                  {/* TAG DA MARCA */}
+                  <span style={{ position: 'absolute', top: '18px', right: '18px', backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                    {p.marca}
+                  </span>
+
+                  {/* CABEÇALHO DO CARD (TÍTULO E DESCRIÇÃO) */}
+                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                    <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '32px', margin: '0 0 8px 0', letterSpacing: '1px', color: '#0f172a', fontWeight: 'bold' }}>
+                      {p.nome?.toUpperCase()}
+                    </h2>
+                    <p style={{ color: '#64748b', fontSize: '14px', margin: 0, fontWeight: '300' }}>
+                      {p.descricao || 'Excelente caimento e qualidade garantida.'}
+                    </p>
+                  </div>
+
+                  {/* IMAGEM E TECNOLOGIAS */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '20px', margin: '20px 0' }}>
+                    {p.imagem_url ? (
+                      <img src={p.imagem_url} alt={p.nome} style={{ maxHeight: '180px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
+                    ) : (
+                      <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '11px' }}>
+                        <ImageIcon size={28} />
+                        <span style={{ marginTop: '4px' }}>Sem Imagem</span>
+                      </div>
+                    )}
+
+                    {p.tecnologias && (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ backgroundColor: '#a4b0f5', color: 'white', padding: '3px 12px', borderRadius: '12px', fontSize: '10px', letterSpacing: '2px', fontWeight: 'bold' }}>
+                          TECNOLOGIAS
+                        </span>
+                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155' }}>
+                          {p.tecnologias}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* TABELA FICHA TÉCNICA (INSPIRADA NA FOTO) */}
+                  <div style={{ border: '1.5px solid #c8d0f8', borderRadius: '12px', padding: '10px 20px', margin: '20px 0', backgroundColor: '#fafafa' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e7ff', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b' }}>Composição</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{p.composicao || '-'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e7ff', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b' }}>Gramatura</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.gramatura, 'g')}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e7ff', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b' }}>Largura</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.largura, 'm')}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b' }}>Rendimento M / M²</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>
+                        {formatNumero(p.rendimento_m, 'm/kg')} | {formatNumero(p.rendimento_m2, 'm²/kg')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* GRID DE PREÇOS COM DESTAQUE */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px' }}>
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>À Vista</span>
+                      <strong style={{ fontSize: '15px', color: '#059669' }}>{formatMoeda(p.a_vista)}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>À Prazo (+6%)</span>
+                      <strong style={{ fontSize: '14px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Valor M</span>
+                      <strong style={{ fontSize: '14px', color: '#334155' }}>{formatMoeda(p.valor_m)}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Valor M²</span>
+                      <strong style={{ fontSize: '14px', color: '#334155' }}>{formatMoeda(p.valor_m2)}</strong>
+                    </div>
+                  </div>
+
+                  {/* COLUNAS DE BENEFÍCIOS (RODAPÉ DO CARD) */}
+                  {(p.conforto_text || p.versatil_text) && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                      {p.conforto_text && (
+                        <div>
+                          <h4 style={{ fontFamily: 'Georgia, serif', margin: '0 0 4px 0', fontSize: '12px', color: '#0f172a' }}>CONFORTO</h4>
+                          <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: '1.4' }}>{p.conforto_text}</p>
+                        </div>
+                      )}
+                      {p.versatil_text && (
+                        <div>
+                          <h4 style={{ fontFamily: 'Georgia, serif', margin: '0 0 4px 0', fontSize: '12px', color: '#0f172a' }}>VERSÁTIL</h4>
+                          <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: '1.4' }}>{p.versatil_text}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* AÇÕES ADMIN NO CARD */}
+                  {profile?.role === 'admin' && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                      <button onClick={() => { setSelectedBrand(p.marca); openModal(p); }} style={{ border: 'none', background: '#e2e8f0', cursor: 'pointer', color: '#1e293b', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Edit2 size={14} /> Editar
+                      </button>
+                      <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: '#fee2e2', cursor: 'pointer', color: '#dc2626', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Trash2 size={14} /> Excluir
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              ))
+            )}
           </div>
         ) : (
           <>
-            <h2 style={{ color: '#1e293b', marginBottom: '15px', fontSize: '16px', textAlign: 'center' }}>Selecione a marca para ver a tabela:</h2>
+            <h2 style={{ color: '#1e293b', marginBottom: '15px', fontSize: '16px', textAlign: 'center' }}>Selecione a marca para ver a tabela completa:</h2>
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '900px', width: '100%' }}>
               <div 
                 onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }}
@@ -740,7 +833,7 @@ export default function App() {
           </div>
         </div>
       ) : (
-        /* ABA DE PRODUTOS */
+        /* ABA DE PRODUTOS DA MARCA SELECIONADA */
         <>
           <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
             <div style={{ position: 'relative', flex: '1 1 200px', width: '100%' }}>
@@ -771,7 +864,6 @@ export default function App() {
           {loading ? (
             <p style={{ textAlign: 'center', color: '#64748b' }}>Carregando produtos...</p>
           ) : (
-            /* CONTÊINER COM ALTURA MÁXIMA E SCROLL INTERNO PARA CONGELAR O HEADER */
             <div style={{ 
               maxHeight: 'calc(100vh - 170px)', 
               overflow: 'auto', 
@@ -836,21 +928,38 @@ export default function App() {
         </>
       )}
 
-      {/* MODAL RESPONSIVO COM CÁLCULO AUTOMÁTICO */}
+      {/* MODAL COMPLETO DE PRODUTO COM CAMPOS PARA FICHA TÉCNICA E IMAGEM */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h3 style={{ margin: 0, fontSize: '16px' }}>
-                {editingId ? 'Editar Produto' : `Novo Produto (${selectedBrand?.toUpperCase()})`}
+                {editingId ? 'Editar Produto' : `Novo Produto (${selectedBrand?.toUpperCase() || 'MANATEX'})`}
               </h3>
               <button onClick={closeModal} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
             </div>
             <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Nome do Produto</label>
-                <input type="text" required value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+                <input type="text" required value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Ex: AERODRY" />
               </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Subtítulo / Descrição Curta</label>
+                <input type="text" value={formData.descricao} onChange={e => setFormData({...formData, descricao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Ex: Trama em forma de furos que proporciona excelente transpiração." />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Link da Imagem (URL)</label>
+                  <input type="text" value={formData.imagem_url} onChange={e => setFormData({...formData, imagem_url: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="https://..." />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Tecnologias</label>
+                  <input type="text" value={formData.tecnologias} onChange={e => setFormData({...formData, tecnologias: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Ex: LYCRA | FREEZE" />
+                </div>
+              </div>
+
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Vista (R$)</label>
@@ -861,6 +970,7 @@ export default function App() {
                   <input type="text" value={formData.a_prazo} onChange={e => setFormData({...formData, a_prazo: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
+
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Valor M (R$)</label>
@@ -871,6 +981,7 @@ export default function App() {
                   <input type="text" value={formData.valor_m2} onChange={e => setFormData({...formData, valor_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
+
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Largura (m)</label>
@@ -878,23 +989,36 @@ export default function App() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Gramatura (g)</label>
-                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="180" />
+                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="160" />
                 </div>
               </div>
+
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M</label>
-                  <input type="text" value={formData.rendimento_m} onChange={handleRendimentoMChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="3,10" />
+                  <input type="text" value={formData.rendimento_m} onChange={handleRendimentoMChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="3,90" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M²</label>
                   <input type="text" value={formData.rendimento_m2} onChange={handleRendimentoM2Change} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="5,00" />
                 </div>
               </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Composição</label>
-                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="100% Algodão" />
+                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="90% poliamida | 10% elastano" />
               </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Texto Conforto (Opcional)</label>
+                <input type="text" value={formData.conforto_text} onChange={e => setFormData({...formData, conforto_text: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Microfibra de poliamida com boa transpiração..." />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Texto Versátil (Opcional)</label>
+                <input type="text" value={formData.versatil_text} onChange={e => setFormData({...formData, versatil_text: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Bom rendimento com elasticidade; ótimo para linha fitness..." />
+              </div>
+
               <button type="submit" style={{ backgroundColor: brandColor, color: 'white', border: 'none', padding: '10px', borderRadius: '5px', fontWeight: 'bold', marginTop: '10px', cursor: 'pointer' }}>
                 {editingId ? 'Atualizar Produto' : 'Cadastrar Produto'}
               </button>
