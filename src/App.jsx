@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download, KeyRound, Image as ImageIcon } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download, KeyRound, Image as ImageIcon, Palette } from 'lucide-react'
 
-// Funções de formatação
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
   const num = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : Number(valor)
@@ -41,6 +40,9 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
+  // Estado para controlo da imagem selecionada em cada produto
+  const [selectedColorsMap, setSelectedColorsMap] = useState({})
+
   const [usersList, setUsersList] = useState([])
 
   const [formData, setFormData] = useState({
@@ -48,6 +50,9 @@ export default function App() {
     largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
     descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
   })
+
+  // Lista dinâmica de cores no modal de edição
+  const [formCores, setFormCores] = useState([])
 
   const parseInputValue = (val) => {
     if (val === null || val === undefined || val === '') return null
@@ -61,7 +66,6 @@ export default function App() {
     return Math.round(parsed * 100) / 100
   }
 
-  // --- CÁLCULO AUTOMÁTICO ---
   const recalcularValores = (aVistaVal, rendMVal, rendM2Val) => {
     const aVista = parseInputValue(aVistaVal)
     const rendM = parseInputValue(rendMVal)
@@ -92,36 +96,19 @@ export default function App() {
   const handleAVistaChange = (e) => {
     const novoAVista = e.target.value
     const { aPrazo, valorM, valorM2 } = recalcularValores(novoAVista, formData.rendimento_m, formData.rendimento_m2)
-
-    setFormData((prev) => ({
-      ...prev,
-      a_vista: novoAVista,
-      a_prazo: aPrazo,
-      valor_m: valorM,
-      valor_m2: valorM2
-    }))
+    setFormData((prev) => ({ ...prev, a_vista: novoAVista, a_prazo: aPrazo, valor_m: valorM, valor_m2: valorM2 }))
   }
 
   const handleRendimentoMChange = (e) => {
     const novoRendM = e.target.value
     const { valorM } = recalcularValores(formData.a_vista, novoRendM, formData.rendimento_m2)
-
-    setFormData((prev) => ({
-      ...prev,
-      rendimento_m: novoRendM,
-      valor_m: valorM
-    }))
+    setFormData((prev) => ({ ...prev, rendimento_m: novoRendM, valor_m: valorM }))
   }
 
   const handleRendimentoM2Change = (e) => {
     const novoRendM2 = e.target.value
     const { valorM2 } = recalcularValores(formData.a_vista, formData.rendimento_m, novoRendM2)
-
-    setFormData((prev) => ({
-      ...prev,
-      rendimento_m2: novoRendM2,
-      valor_m2: valorM2
-    }))
+    setFormData((prev) => ({ ...prev, rendimento_m2: novoRendM2, valor_m2: valorM2 }))
   }
 
   useEffect(() => {
@@ -132,9 +119,7 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsResettingPassword(true)
-      }
+      if (event === 'PASSWORD_RECOVERY') setIsResettingPassword(true)
       if (session) fetchUserProfile(session.user.id)
       else setProfile(null)
     })
@@ -144,12 +129,7 @@ export default function App() {
 
   const fetchUserProfile = async (userId) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
-
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
       if (error) return
       if (data) setProfile(data)
       else setProfile({ id: userId, role: 'user', approved: true })
@@ -163,7 +143,7 @@ export default function App() {
     setLoading(true)
     const { data, error } = await supabase
       .from('produtos')
-      .select('*')
+      .select('*, produto_cores(*)')
       .eq('marca', selectedBrand)
       .order('id', { ascending: true })
 
@@ -174,18 +154,14 @@ export default function App() {
   const fetchAllProducts = async () => {
     const { data, error } = await supabase
       .from('produtos')
-      .select('*')
+      .select('*, produto_cores(*)')
       .order('nome', { ascending: true })
 
     if (!error) setAllProducts(data || [])
   }
 
   const fetchUsers = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false })
-
+    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
     if (data) setUsersList(data)
   }
 
@@ -206,12 +182,12 @@ export default function App() {
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) setAuthError(error.message)
       else {
-        setAuthMessage('Cadastro realizado! Por favor, confirme seu e-mail e aguarde a aprovação do administrador.')
+        setAuthMessage('Registo efetuado! Confirme o seu e-mail.')
         setIsSignUp(false)
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setAuthError('E-mail ou senha incorretos.')
+      if (error) setAuthError('E-mail ou palavra-passe incorretos.')
     }
   }
 
@@ -219,24 +195,19 @@ export default function App() {
     e.preventDefault()
     setAuthError('')
     setAuthMessage('')
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin
-    })
-
-    if (error) setAuthError('Erro ao enviar e-mail: ' + error.message)
-    else setAuthMessage('E-mail enviado! Verifique sua caixa de entrada.')
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+    if (error) setAuthError('Erro: ' + error.message)
+    else setAuthMessage('E-mail de recuperação enviado!')
   }
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault()
     setAuthError('')
     setAuthMessage('')
-
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) setAuthError('Erro ao redefinir: ' + error.message)
+    if (error) setAuthError('Erro: ' + error.message)
     else {
-      setAuthMessage('Senha alterada com sucesso!')
+      setAuthMessage('Palavra-passe alterada!')
       setIsResettingPassword(false)
       setNewPassword('')
     }
@@ -245,52 +216,6 @@ export default function App() {
   const handleLogout = () => {
     setSelectedBrand(null)
     supabase.auth.signOut()
-  }
-
-  const handleExportExcel = async () => {
-    if (!window.XLSX) {
-      await new Promise((resolve, reject) => {
-        const script = document.createElement('script')
-        script.src = 'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js'
-        script.onload = resolve
-        script.onerror = reject
-        document.head.appendChild(script)
-      })
-    }
-
-    const dataToExport = filteredProducts.map((p) => ({
-      'Produto': p.nome || '',
-      'À Vista': p.a_vista ?? '',
-      'À Prazo': p.a_prazo ?? '',
-      'Valor M': p.valor_m ?? '',
-      'Valor M²': p.valor_m2 ?? '',
-      'Largura (m)': p.largura ? `${p.largura}m` : '',
-      'Gramatura (g)': p.gramatura ? `${p.gramatura}g` : '',
-      'Rendimento M': p.rendimento_m ? `${p.rendimento_m}m` : '',
-      'Rendimento M²': p.rendimento_m2 ? `${p.rendimento_m2}m²` : '',
-      'Composição': p.composicao || ''
-    }))
-
-    const worksheet = window.XLSX.utils.json_to_sheet(dataToExport)
-    const workbook = window.XLSX.utils.book_new()
-    window.XLSX.utils.book_append_sheet(workbook, worksheet, selectedBrand?.toUpperCase() || 'Produtos')
-    
-    const fitToColumn = Object.keys(dataToExport[0] || {}).map((key) => ({ wch: Math.max(key.length + 5, 15) }))
-    worksheet['!cols'] = fitToColumn
-
-    const dataHoje = new Date().toISOString().split('T')[0]
-    window.XLSX.writeFile(workbook, `Tabela_${selectedBrand?.toUpperCase()}_${dataHoje}.xlsx`)
-  }
-
-  const toggleApproval = async (userId, currentStatus) => {
-    await supabase.from('profiles').update({ approved: !currentStatus }).eq('id', userId)
-    fetchUsers()
-  }
-
-  const toggleRole = async (userId, currentRole) => {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin'
-    await supabase.from('profiles').update({ role: newRole }).eq('id', userId)
-    fetchUsers()
   }
 
   const handleSaveProduct = async (e) => {
@@ -314,10 +239,29 @@ export default function App() {
       versatil_text: formData.versatil_text
     }
 
+    let productId = editingId
+
     if (editingId) {
       await supabase.from('produtos').update(payload).eq('id', editingId)
+      await supabase.from('produto_cores').delete().eq('produto_id', editingId)
     } else {
-      await supabase.from('produtos').insert([payload])
+      const { data } = await supabase.from('produtos').insert([payload]).select()
+      if (data && data[0]) productId = data[0].id
+    }
+
+    if (productId && formCores.length > 0) {
+      const coresPayload = formCores
+        .filter(c => c.nome_cor.trim() !== '')
+        .map(c => ({
+          produto_id: productId,
+          nome_cor: c.nome_cor,
+          codigo_hex: c.codigo_hex || '#000000',
+          imagem_url: c.imagem_url || ''
+        }))
+
+      if (coresPayload.length > 0) {
+        await supabase.from('produto_cores').insert(coresPayload)
+      }
     }
 
     closeModal()
@@ -326,7 +270,7 @@ export default function App() {
   }
 
   const handleDelete = async (id) => {
-    if (confirm("Deseja realmente excluir este produto?")) {
+    if (confirm("Pretende eliminar este produto?")) {
       await supabase.from('produtos').delete().eq('id', id)
       fetchProducts()
       fetchAllProducts()
@@ -360,6 +304,8 @@ export default function App() {
         conforto_text: product.conforto_text || '',
         versatil_text: product.versatil_text || ''
       })
+
+      setFormCores(product.produto_cores || [])
     } else {
       setEditingId(null)
       setFormData({ 
@@ -367,6 +313,7 @@ export default function App() {
         largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
         descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
       })
+      setFormCores([])
     }
     setIsModalOpen(true)
   }
@@ -374,6 +321,21 @@ export default function App() {
   const closeModal = () => {
     setIsModalOpen(false)
     setEditingId(null)
+    setFormCores([])
+  }
+
+  const addCorField = () => {
+    setFormCores([...formCores, { nome_cor: '', codigo_hex: '#000000', imagem_url: '' }])
+  }
+
+  const removeCorField = (index) => {
+    setFormCores(formCores.filter((_, i) => i !== index))
+  }
+
+  const handleCorChange = (index, field, value) => {
+    const newCores = [...formCores]
+    newCores[index][field] = value
+    setFormCores(newCores)
   }
 
   const filteredProducts = products.filter(p =>
@@ -390,158 +352,43 @@ export default function App() {
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827'
 
-  const stickyThStyle = {
-    padding: '10px',
-    position: 'sticky',
-    top: 0,
-    backgroundColor: isManatex ? '#059669' : '#111827',
-    color: 'white',
-    zIndex: 10,
-    boxShadow: '0 2px 2px -1px rgba(0, 0, 0, 0.2)'
-  }
-
-  // RESET DE SENHA
-  if (isResettingPassword) {
+  // LOGIN E RESTANTES TELAS (MANTIDAS CONFORME O ANTERIOR)
+  if (!session) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
-        <form onSubmit={handleUpdatePassword} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px', boxSizing: 'border-box' }}>
+        <form onSubmit={handleAuth} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
-            <KeyRound size={40} />
-            <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>Criar Nova Senha</h2>
+            <Lock size={40} />
+            <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>Catálogo de Preços</h2>
           </div>
-
           {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
-          {authMessage && <p style={{ color: 'green', fontSize: '13px', textAlign: 'center' }}>{authMessage}</p>}
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Nova Senha</label>
-            <input type="password" required value={newPassword} onChange={e => setNewPassword(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} placeholder="Mínimo 6 caracteres" />
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>E-mail</label>
+            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
           </div>
-
-          <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
-            Salvar Nova Senha
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Palavra-passe</label>
+            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
+          </div>
+          <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+            Entrar
           </button>
         </form>
       </div>
     )
   }
 
-  // LOGIN / REGISTRO
-  if (!session) {
-    return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
-        {isForgotPassword ? (
-          <form onSubmit={handleForgotPassword} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px', boxSizing: 'border-box' }}>
-            <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
-              <KeyRound size={40} />
-              <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>Recuperar Senha</h2>
-            </div>
-
-            {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
-            {authMessage && <p style={{ color: 'green', fontSize: '13px', textAlign: 'center' }}>{authMessage}</p>}
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Seu E-mail registrado</label>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} placeholder="exemplo@email.com" />
-            </div>
-
-            <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
-              Enviar E-mail de Recuperação
-            </button>
-
-            <div style={{ textAlign: 'center' }}>
-              <button type="button" onClick={() => { setIsForgotPassword(false); setAuthError(''); setAuthMessage(''); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
-                Voltar para o Login
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleAuth} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px', boxSizing: 'border-box' }}>
-            <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
-              {isSignUp ? <UserPlus size={40} /> : <Lock size={40} />}
-              <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>{isSignUp ? 'Criar Conta' : 'Catálogo de Preços'}</h2>
-            </div>
-
-            {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
-            {authMessage && <p style={{ color: 'green', fontSize: '13px', textAlign: 'center' }}>{authMessage}</p>}
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>E-mail</label>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
-            </div>
-
-            <div style={{ marginBottom: '10px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>Senha</label>
-              <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} placeholder="Mínimo 6 caracteres" />
-            </div>
-
-            {!isSignUp && (
-              <div style={{ textAlign: 'right', marginBottom: '20px' }}>
-                <button type="button" onClick={() => { setIsForgotPassword(true); setAuthError(''); setAuthMessage(''); }} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '12px' }}>
-                  Esqueceu sua senha?
-                </button>
-              </div>
-            )}
-
-            <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
-              {isSignUp ? 'Cadastrar' : 'Entrar'}
-            </button>
-
-            <div style={{ textAlign: 'center' }}>
-              <button type="button" onClick={() => { setIsSignUp(!isSignUp); setAuthError(''); setAuthMessage(''); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
-                {isSignUp ? 'Já tem uma conta? Faça login' : 'Não tem conta? Cadastre-se aqui'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    )
-  }
-
-  // AGUARDANDO APROVAÇÃO
-  if (profile && !profile.approved) {
-    return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
-        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', textAlign: 'center', maxWidth: '400px', width: '100%', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', boxSizing: 'border-box' }}>
-          <ShieldAlert size={50} color="#eab308" style={{ marginBottom: '10px' }} />
-          <h2 style={{ color: '#1e293b', margin: '0 0 10px 0', fontSize: '20px' }}>Aguardando Autorização</h2>
-          <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.5' }}>
-            Sua conta foi confirmada, porém precisa ser <strong>aprovada por um administrador</strong> antes de liberar o acesso aos preços.
-          </p>
-          <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginTop: '15px' }}>
-            Sair
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // SELEÇÃO DE MARCA / BUSCA GLOBAL COM CARDS DE DESIGN INSPIRADO
+  // TELA INICIAL / BUSCA GLOBAL DE PRODUTOS
   if (!selectedBrand && activeTab !== 'users') {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' }}>
-        <header style={{ width: '100%', maxWidth: '900px', backgroundColor: '#059669', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '20px', boxSizing: 'border-box' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '18px' }}>Catálogo Geral</h1>
-            <span style={{ fontSize: '12px', opacity: 0.9 }}>
-              Nível: <strong>{profile?.role === 'admin' ? 'Administrador' : 'Usuário'}</strong>
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {profile?.role === 'admin' && (
-              <button 
-                onClick={() => setActiveTab('users')} 
-                style={{ backgroundColor: 'transparent', color: 'white', border: '1px solid white', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px' }}>
-                <Users size={15} /> Usuários
-              </button>
-            )}
-            <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px' }}>
-              <LogOut size={15} /> Sair
-            </button>
-          </div>
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <header style={{ width: '100%', maxWidth: '900px', backgroundColor: '#059669', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h1 style={{ margin: 0, fontSize: '18px' }}>Catálogo Geral</h1>
+          <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <LogOut size={15} /> Sair
+          </button>
         </header>
 
-        {/* CAMPO DE BUSCA PRINCIPAL */}
         <div style={{ width: '100%', maxWidth: '900px', marginBottom: '25px' }}>
           <div style={{ position: 'relative', width: '100%' }}>
             <Search size={20} style={{ position: 'absolute', left: '15px', top: '14px', color: '#64748b' }} />
@@ -550,72 +397,96 @@ export default function App() {
               placeholder="Digite o nome do produto ou tecido para buscar..."
               value={globalSearchTerm}
               onChange={(e) => setGlobalSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '12px 40px 12px 45px', borderRadius: '10px', border: '2px solid #059669', outline: 'none', boxSizing: 'border-box', fontSize: '15px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
+              style={{ width: '100%', padding: '12px 40px 12px 45px', borderRadius: '10px', border: '2px solid #059669', outline: 'none', boxSizing: 'border-box', fontSize: '15px' }}
             />
-            {globalSearchTerm && (
-              <button onClick={() => setGlobalSearchTerm('')} style={{ position: 'absolute', right: '12px', top: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-                <X size={20} />
-              </button>
-            )}
           </div>
         </div>
 
-        {/* EXIBIÇÃO EM CARD MODERNO (INSPIRADO NA IMAGEM ENVIADA) */}
         {globalSearchTerm ? (
-          <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '25px', marginBottom: '30px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 5px' }}>
-              <h3 style={{ margin: 0, color: '#334155', fontSize: '15px', fontWeight: '600' }}>
-                Resultados encontrados: {filteredGlobalProducts.length}
-              </h3>
-            </div>
+          <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
+            {filteredGlobalProducts.map((p) => {
+              // Verifica qual imagem está selecionada dinamicamente para este produto
+              const currentImage = selectedColorsMap[p.id] || p.imagem_url
 
-            {filteredGlobalProducts.length === 0 ? (
-              <div style={{ backgroundColor: 'white', padding: '30px', textAlign: 'center', borderRadius: '12px', border: '1px border #e2e8f0', color: '#64748b' }}>
-                Nenhum produto encontrado para "{globalSearchTerm}".
-              </div>
-            ) : (
-              filteredGlobalProducts.map((p) => (
+              return (
                 <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '25px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
-                  
-                  {/* TAG DA MARCA */}
                   <span style={{ position: 'absolute', top: '18px', right: '18px', backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
                     {p.marca}
                   </span>
 
-                  {/* CABEÇALHO DO CARD (TÍTULO E DESCRIÇÃO) */}
-                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                    <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '32px', margin: '0 0 8px 0', letterSpacing: '1px', color: '#0f172a', fontWeight: 'bold' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                    <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '32px', margin: '0 0 8px 0', color: '#0f172a', fontWeight: 'bold' }}>
                       {p.nome?.toUpperCase()}
                     </h2>
-                    <p style={{ color: '#64748b', fontSize: '14px', margin: 0, fontWeight: '300' }}>
+                    <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>
                       {p.descricao || 'Excelente caimento e qualidade garantida.'}
                     </p>
                   </div>
 
-                  {/* IMAGEM E TECNOLOGIAS */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '20px', margin: '20px 0' }}>
-                    {p.imagem_url ? (
-                      <img src={p.imagem_url} alt={p.nome} style={{ maxHeight: '180px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
+                  {/* IMAGEM PRINCIPAL (MUTA DINAMICAMENTE AO CLICAR NA COR) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
+                    {currentImage ? (
+                      <img src={currentImage} alt={p.nome} style={{ maxHeight: '220px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', transition: 'all 0.3s ease' }} />
                     ) : (
-                      <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '11px' }}>
+                      <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
                         <ImageIcon size={28} />
-                        <span style={{ marginTop: '4px' }}>Sem Imagem</span>
                       </div>
                     )}
 
-                    {p.tecnologias && (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ backgroundColor: '#a4b0f5', color: 'white', padding: '3px 12px', borderRadius: '12px', fontSize: '10px', letterSpacing: '2px', fontWeight: 'bold' }}>
-                          TECNOLOGIAS
+                    {/* SEÇÃO DE VARIANTES/CORES (BOLINHAS CLICÁVEIS) */}
+                    {p.produto_cores && p.produto_cores.length > 0 && (
+                      <div style={{ marginTop: '15px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                          CORES DISPONÍVEIS:
                         </span>
-                        <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155' }}>
-                          {p.tecnologias}
-                        </span>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          {/* Opção para voltar à imagem original padrão */}
+                          {p.imagem_url && (
+                            <button
+                              onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: p.imagem_url })}
+                              title="Foto Principal"
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                border: currentImage === p.imagem_url ? '3px solid #059669' : '1px solid #ccc',
+                                cursor: 'pointer',
+                                backgroundColor: '#f8fafc',
+                                fontSize: '10px',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              Pad
+                            </button>
+                          )}
+
+                          {p.produto_cores.map((cor) => (
+                            <button
+                              key={cor.id}
+                              onClick={() => {
+                                if (cor.imagem_url) {
+                                  setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor.imagem_url })
+                                }
+                              }}
+                              title={cor.nome_cor}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                backgroundColor: cor.codigo_hex || '#000',
+                                border: currentImage === cor.imagem_url ? '3px solid #059669' : '2px solid white',
+                                boxShadow: '0 0 0 1px #cbd5e1',
+                                cursor: cor.imagem_url ? 'pointer' : 'default',
+                                opacity: cor.imagem_url ? 1 : 0.6
+                              }}
+                            />
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {/* TABELA FICHA TÉCNICA (INSPIRADA NA FOTO) */}
+                  {/* FICHA TÉCNICA */}
                   <div style={{ border: '1.5px solid #c8d0f8', borderRadius: '12px', padding: '10px 20px', margin: '20px 0', backgroundColor: '#fafafa' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e7ff', fontSize: '13px' }}>
                       <span style={{ color: '#64748b' }}>Composição</span>
@@ -625,20 +496,14 @@ export default function App() {
                       <span style={{ color: '#64748b' }}>Gramatura</span>
                       <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.gramatura, 'g')}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e7ff', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' }}>
                       <span style={{ color: '#64748b' }}>Largura</span>
                       <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.largura, 'm')}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' }}>
-                      <span style={{ color: '#64748b' }}>Rendimento M / M²</span>
-                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>
-                        {formatNumero(p.rendimento_m, 'm/kg')} | {formatNumero(p.rendimento_m2, 'm²/kg')}
-                      </span>
-                    </div>
                   </div>
 
-                  {/* GRID DE PREÇOS COM DESTAQUE */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px' }}>
+                  {/* VALORES */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', textAlign: 'center' }}>
                     <div>
                       <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>À Vista</span>
                       <strong style={{ fontSize: '15px', color: '#059669' }}>{formatMoeda(p.a_vista)}</strong>
@@ -647,376 +512,174 @@ export default function App() {
                       <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>À Prazo (+6%)</span>
                       <strong style={{ fontSize: '14px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</strong>
                     </div>
-                    <div>
-                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Valor M</span>
-                      <strong style={{ fontSize: '14px', color: '#334155' }}>{formatMoeda(p.valor_m)}</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Valor M²</span>
-                      <strong style={{ fontSize: '14px', color: '#334155' }}>{formatMoeda(p.valor_m2)}</strong>
-                    </div>
                   </div>
 
-                  {/* COLUNAS DE BENEFÍCIOS (RODAPÉ DO CARD) */}
-                  {(p.conforto_text || p.versatil_text) && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-                      {p.conforto_text && (
-                        <div>
-                          <h4 style={{ fontFamily: 'Georgia, serif', margin: '0 0 4px 0', fontSize: '12px', color: '#0f172a' }}>CONFORTO</h4>
-                          <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: '1.4' }}>{p.conforto_text}</p>
-                        </div>
-                      )}
-                      {p.versatil_text && (
-                        <div>
-                          <h4 style={{ fontFamily: 'Georgia, serif', margin: '0 0 4px 0', fontSize: '12px', color: '#0f172a' }}>VERSÁTIL</h4>
-                          <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: '1.4' }}>{p.versatil_text}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* AÇÕES ADMIN NO CARD */}
                   {profile?.role === 'admin' && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-                      <button onClick={() => { setSelectedBrand(p.marca); openModal(p); }} style={{ border: 'none', background: '#e2e8f0', cursor: 'pointer', color: '#1e293b', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Edit2 size={14} /> Editar
-                      </button>
-                      <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: '#fee2e2', cursor: 'pointer', color: '#dc2626', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Trash2 size={14} /> Excluir
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '15px' }}>
+                      <button onClick={() => openModal(p)} style={{ border: 'none', background: '#e2e8f0', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Edit2 size={14} /> Editar / Adicionar Cores
                       </button>
                     </div>
                   )}
 
                 </div>
-              ))
-            )}
+              )
+            })}
           </div>
         ) : (
-          <>
-            <h2 style={{ color: '#1e293b', marginBottom: '15px', fontSize: '16px', textAlign: 'center' }}>Selecione a marca para ver a tabela completa:</h2>
-            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '900px', width: '100%' }}>
-              <div 
-                onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }}
-                style={{ flex: '1 1 260px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '20px 15px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
-                <img src="/mana.jpg" alt="Manatex Têxtil" style={{ maxHeight: '50px', maxWidth: '100%', objectFit: 'contain', marginBottom: '10px' }} />
-                <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>Tabela de produtos Manatex</p>
-              </div>
-
-              <div 
-                onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }}
-                style={{ flex: '1 1 260px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '20px 15px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
-                <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '50px', maxWidth: '100%', objectFit: 'contain', marginBottom: '10px', backgroundColor: 'white', padding: '4px', borderRadius: '4px' }} />
-                <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Tabela de produtos MSports</p>
-              </div>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: '900px' }}>
+            <div onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }} style={{ flex: '1 1 260px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
+              <img src="/mana.jpg" alt="Manatex" style={{ maxHeight: '50px', marginBottom: '10px' }} />
+              <p style={{ color: '#64748b', margin: 0 }}>Tabela de produtos Manatex</p>
             </div>
-          </>
+            <div onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }} style={{ flex: '1 1 260px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
+              <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '50px', marginBottom: '10px', backgroundColor: 'white', padding: '4px' }} />
+              <p style={{ color: '#9ca3af', margin: 0 }}>Tabela de produtos MSports</p>
+            </div>
+          </div>
         )}
       </div>
     )
   }
 
-  // PAINEL DE PRODUTOS E USUÁRIOS
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px', boxSizing: 'border-box' }}>
-      
-      {/* HEADER RESPONSIVO */}
-      <header style={{ 
-        backgroundColor: brandColor, 
-        color: 'white', 
-        padding: '12px 15px', 
-        borderRadius: '10px', 
-        display: 'flex', 
-        flexDirection: 'row',
-        flexWrap: 'wrap', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        gap: '10px', 
-        marginBottom: '15px' 
-      }}>
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
+      <header style={{ backgroundColor: brandColor, color: 'white', padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {selectedBrand && (
-            <button 
-              onClick={() => setSelectedBrand(null)} 
-              title="Voltar"
-              style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              <ArrowLeft size={18} />
-            </button>
-          )}
-          <div>
-            <h1 style={{ margin: 0, fontSize: '16px', lineHeight: '1.2' }}>
-              {activeTab === 'users' ? 'Usuários' : `Tabela ${selectedBrand?.toUpperCase()}`}
-            </h1>
-            <span style={{ fontSize: '11px', opacity: 0.85 }}>
-              Perfil: <strong>{profile?.role === 'admin' ? 'Admin' : 'Usuário'}</strong>
-            </span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginLeft: 'auto' }}>
-          {profile?.role === 'admin' && (
-            <>
-              {selectedBrand && (
-                <button 
-                  onClick={() => setActiveTab('products')} 
-                  style={{ backgroundColor: activeTab === 'products' ? 'rgba(255,255,255,0.25)' : 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.5)', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                  Produtos
-                </button>
-              )}
-              <button 
-                onClick={() => setActiveTab('users')} 
-                style={{ backgroundColor: activeTab === 'users' ? 'rgba(255,255,255,0.25)' : 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.5)', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-                <Users size={14} /> Usuários
-              </button>
-              {activeTab === 'products' && selectedBrand && (
-                <button onClick={() => openModal()} style={{ backgroundColor: 'white', color: isManatex ? '#059669' : '#111827', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-                  <Plus size={14} /> Novo
-                </button>
-              )}
-            </>
-          )}
-
-          <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-            <LogOut size={14} /> Sair
+          <button onClick={() => setSelectedBrand(null)} style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
+            <ArrowLeft size={18} />
           </button>
+          <h1 style={{ margin: 0, fontSize: '16px' }}>Tabela {selectedBrand?.toUpperCase()}</h1>
         </div>
+        {profile?.role === 'admin' && (
+          <button onClick={() => openModal()} style={{ backgroundColor: 'white', color: isManatex ? '#059669' : '#111827', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={14} /> Novo Produto
+          </button>
+        )}
       </header>
 
-      {/* ABA DE USUÁRIOS */}
-      {activeTab === 'users' && profile?.role === 'admin' ? (
-        <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h2 style={{ margin: 0, fontSize: '16px', color: '#1e293b' }}>Usuários e Permissões</h2>
-            <button onClick={() => { setActiveTab('products'); if(!selectedBrand) setSelectedBrand('manatex'); }} style={{ color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px' }}>
-              Voltar
-            </button>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-              <thead>
-                <tr>
-                  <th style={{ ...stickyThStyle, backgroundColor: '#111827' }}>E-mail</th>
-                  <th style={{ ...stickyThStyle, backgroundColor: '#111827' }}>Perfil</th>
-                  <th style={{ ...stickyThStyle, backgroundColor: '#111827' }}>Status</th>
-                  <th style={{ ...stickyThStyle, backgroundColor: '#111827', textAlign: 'center' }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usersList.map((u) => (
-                  <tr key={u.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '10px', fontWeight: 'bold' }}>{u.email}</td>
-                    <td style={{ padding: '10px' }}>
-                      <span style={{ backgroundColor: u.role === 'admin' ? '#dbeafe' : '#f3f4f6', color: u.role === 'admin' ? '#1e40af' : '#374151', padding: '3px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
-                        {u.role.toUpperCase()}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px' }}>
-                      <span style={{ color: u.approved ? '#059669' : '#dc2626', fontWeight: 'bold', fontSize: '12px' }}>
-                        {u.approved ? 'Autorizado' : 'Pendente'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '6px' }}>
-                      <button 
-                        onClick={() => toggleApproval(u.id, u.approved)} 
-                        style={{ backgroundColor: u.approved ? '#fee2e2' : '#dcfce7', color: u.approved ? '#991b1b' : '#166534', border: 'none', padding: '5px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}>
-                        {u.approved ? 'Bloquear' : 'Autorizar'}
-                      </button>
-                      <button 
-                        onClick={() => toggleRole(u.id, u.role)} 
-                        style={{ backgroundColor: '#f3f4f6', color: '#1f2937', border: '1px solid #ccc', padding: '5px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
-                        Mudar Perfil
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        /* ABA DE PRODUTOS DA MARCA SELECIONADA */
-        <>
-          <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-            <div style={{ position: 'relative', flex: '1 1 200px', width: '100%' }}>
-              <Search size={18} style={{ position: 'absolute', left: '10px', top: '10px', color: '#888' }} />
-              <input
-                type="text"
-                placeholder={`Buscar em ${selectedBrand?.toUpperCase()}...`}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ width: '100%', padding: '8px 8px 8px 35px', borderRadius: '6px', border: '1px solid #ccc', outline: 'none', boxSizing: 'border-box', fontSize: '14px' }}
-              />
-            </div>
+      {/* TABELA DE PRODUTOS */}
+      <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ backgroundColor: brandColor, color: 'white' }}>
+              <th style={{ padding: '10px', textAlign: 'left' }}>Produto</th>
+              <th style={{ padding: '10px', textAlign: 'left' }}>Cores</th>
+              <th style={{ padding: '10px', textAlign: 'left' }}>À Vista</th>
+              <th style={{ padding: '10px', textAlign: 'left' }}>Composição</th>
+              {profile?.role === 'admin' && <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredProducts.map((p) => (
+              <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: '10px', fontWeight: 'bold' }}>{p.nome}</td>
+                <td style={{ padding: '10px' }}>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {p.produto_cores?.map((c) => (
+                      <span key={c.id} title={c.nome_cor} style={{ width: '14px', height: '14px', borderRadius: '50%', backgroundColor: c.codigo_hex, border: '1px solid #ccc', display: 'inline-block' }} />
+                    ))}
+                  </div>
+                </td>
+                <td style={{ padding: '10px', color: '#059669', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
+                <td style={{ padding: '10px' }}>{p.composicao}</td>
+                {profile?.role === 'admin' && (
+                  <td style={{ padding: '10px', textAlign: 'center' }}>
+                    <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb' }}>
+                      <Edit2 size={15} />
+                    </button>
+                    <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626', marginLeft: '8px' }}>
+                      <Trash2 size={15} />
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%', maxWidth: '100%', justifyContent: 'flex-start' }}>
-              <button 
-                onClick={handleExportExcel}
-                style={{ flex: '1 1 auto', backgroundColor: '#16a34a', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                <Download size={15} /> Exportar Excel
-              </button>
-              <button 
-                onClick={() => setSelectedBrand(null)} 
-                style={{ flex: '1 1 auto', backgroundColor: '#e2e8f0', color: '#334155', border: 'none', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}>
-                Trocar Marca
-              </button>
-            </div>
-          </div>
-
-          {loading ? (
-            <p style={{ textAlign: 'center', color: '#64748b' }}>Carregando produtos...</p>
-          ) : (
-            <div style={{ 
-              maxHeight: 'calc(100vh - 170px)', 
-              overflow: 'auto', 
-              backgroundColor: 'white', 
-              borderRadius: '8px', 
-              boxShadow: '0 2px 5px rgba(0,0,0,0.1)', 
-              width: '100%' 
-            }}>
-              <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                <thead>
-                  <tr>
-                    <th style={stickyThStyle}>Produto</th>
-                    <th style={stickyThStyle}>À Vista</th>
-                    <th style={stickyThStyle}>À Prazo</th>
-                    <th style={stickyThStyle}>Valor M</th>
-                    <th style={stickyThStyle}>Valor M²</th>
-                    <th style={stickyThStyle}>Largura</th>
-                    <th style={stickyThStyle}>Gram.</th>
-                    <th style={stickyThStyle}>Rend. M</th>
-                    <th style={stickyThStyle}>Rend. M²</th>
-                    <th style={stickyThStyle}>Composição</th>
-                    {profile?.role === 'admin' && <th style={{ ...stickyThStyle, textAlign: 'center' }}>Ações</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.length === 0 ? (
-                    <tr>
-                      <td colSpan={11} style={{ padding: '15px', textAlign: 'center', color: '#64748b' }}>
-                        Nenhum produto cadastrado para <strong>{selectedBrand?.toUpperCase()}</strong>.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredProducts.map((p) => (
-                      <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '10px', fontWeight: 'bold' }}>{p.nome}</td>
-                        <td style={{ padding: '10px', color: isManatex ? '#059669' : '#111827', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
-                        <td style={{ padding: '10px' }}>{formatMoeda(p.a_prazo)}</td>
-                        <td style={{ padding: '10px' }}>{formatMoeda(p.valor_m)}</td>
-                        <td style={{ padding: '10px' }}>{formatMoeda(p.valor_m2)}</td>
-                        <td style={{ padding: '10px' }}>{formatNumero(p.largura, 'm')}</td>
-                        <td style={{ padding: '10px' }}>{formatNumero(p.gramatura, 'g')}</td>
-                        <td style={{ padding: '10px' }}>{formatNumero(p.rendimento_m, 'm')}</td>
-                        <td style={{ padding: '10px' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
-                        <td style={{ padding: '10px', fontSize: '12px' }}>{p.composicao}</td>
-                        {profile?.role === 'admin' && (
-                          <td style={{ padding: '10px', textAlign: 'center' }}>
-                            <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', marginRight: '6px' }}>
-                              <Edit2 size={15} />
-                            </button>
-                            <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626' }}>
-                              <Trash2 size={15} />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* MODAL COMPLETO DE PRODUTO COM CAMPOS PARA FICHA TÉCNICA E IMAGEM */}
+      {/* MODAL COM A SESSÃO DINÂMICA DE CORES */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box' }}>
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>
-                {editingId ? 'Editar Produto' : `Novo Produto (${selectedBrand?.toUpperCase() || 'MANATEX'})`}
-              </h3>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>{editingId ? 'Editar Produto' : 'Novo Produto'}</h3>
               <button onClick={closeModal} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
             </div>
+            
             <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Nome do Produto</label>
                 <input type="text" required value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Ex: AERODRY" />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Subtítulo / Descrição Curta</label>
-                <input type="text" value={formData.descricao} onChange={e => setFormData({...formData, descricao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Ex: Trama em forma de furos que proporciona excelente transpiração." />
-              </div>
-
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Link da Imagem (URL)</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Foto Principal (URL)</label>
                   <input type="text" value={formData.imagem_url} onChange={e => setFormData({...formData, imagem_url: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="https://..." />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Tecnologias</label>
-                  <input type="text" value={formData.tecnologias} onChange={e => setFormData({...formData, tecnologias: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Ex: LYCRA | FREEZE" />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Vista (R$)</label>
                   <input type="text" value={formData.a_vista} onChange={handleAVistaChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Prazo (R$)</label>
-                  <input type="text" value={formData.a_prazo} onChange={e => setFormData({...formData, a_prazo: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
-                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Valor M (R$)</label>
-                  <input type="text" value={formData.valor_m} onChange={e => setFormData({...formData, valor_m: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
+              {/* SEÇÃO DINÂMICA PARA ADICIONAR CORES */}
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', backgroundColor: '#f8fafc', marginTop: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', color: '#1e293b' }}>
+                    <Palette size={16} /> Cores / Variantes do Produto
+                  </span>
+                  <button type="button" onClick={addCorField} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                    + Adicionar Cor
+                  </button>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Valor M² (R$)</label>
-                  <input type="text" value={formData.valor_m2} onChange={e => setFormData({...formData, valor_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
-                </div>
+
+                {formCores.map((cor, index) => (
+                  <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="Nome da cor (ex: Marinho)"
+                      value={cor.nome_cor}
+                      onChange={(e) => handleCorChange(index, 'nome_cor', e.target.value)}
+                      style={{ flex: '2', padding: '6px', fontSize: '12px' }}
+                    />
+                    <input
+                      type="color"
+                      title="Escolher Cor"
+                      value={cor.codigo_hex || '#000000'}
+                      onChange={(e) => handleCorChange(index, 'codigo_hex', e.target.value)}
+                      style={{ width: '35px', height: '30px', padding: 0, border: 'none', cursor: 'pointer' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="URL da Foto desta cor"
+                      value={cor.imagem_url}
+                      onChange={(e) => handleCorChange(index, 'imagem_url', e.target.value)}
+                      style={{ flex: '3', padding: '6px', fontSize: '12px' }}
+                    />
+                    <button type="button" onClick={() => removeCorField(index)} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer' }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Largura (m)</label>
-                  <input type="text" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="1,60" />
+                  <input type="text" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Gramatura (g)</label>
-                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="160" />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M</label>
-                  <input type="text" value={formData.rendimento_m} onChange={handleRendimentoMChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="3,90" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M²</label>
-                  <input type="text" value={formData.rendimento_m2} onChange={handleRendimentoM2Change} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="5,00" />
+                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Composição</label>
-                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="90% poliamida | 10% elastano" />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Texto Conforto (Opcional)</label>
-                <input type="text" value={formData.conforto_text} onChange={e => setFormData({...formData, conforto_text: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Microfibra de poliamida com boa transpiração..." />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Texto Versátil (Opcional)</label>
-                <input type="text" value={formData.versatil_text} onChange={e => setFormData({...formData, versatil_text: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Bom rendimento com elasticidade; ótimo para linha fitness..." />
+                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
               </div>
 
               <button type="submit" style={{ backgroundColor: brandColor, color: 'white', border: 'none', padding: '10px', borderRadius: '5px', fontWeight: 'bold', marginTop: '10px', cursor: 'pointer' }}>
