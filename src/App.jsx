@@ -182,7 +182,7 @@ export default function App() {
       rendimento_m2: parseInputValue(formData.rendimento_m2),
       composicao: formData.composicao,
       descricao: formData.descricao,
-      imagem_url: formData.imagem_url,
+      imagem_url: formData.imagem_url, // <-- Adicionado: agora salva o link da imagem principal
       tecnologias: formData.tecnologias,
       conforto_text: formData.conforto_text,
       versatil_text: formData.versatil_text
