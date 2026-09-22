@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, Shield, Zap } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -33,7 +33,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
-  // Mapeamento de imagens dinâmicas por cor nos cards
+  // Mapeamento da cor/imagem selecionada por produto
   const [selectedColorsMap, setSelectedColorsMap] = useState({})
 
   const [formData, setFormData] = useState({
@@ -169,53 +169,82 @@ export default function App() {
 
   const handleSaveProduct = async (e) => {
     e.preventDefault()
+
+    // Cálculo e conversão dos valores recalculados
+    const { aPrazo, valorM, valorM2 } = recalcularValores(formData.a_vista, formData.rendimento_m, formData.rendimento_m2)
+
     const payload = {
       nome: formData.nome,
       marca: selectedBrand || 'manatex',
       a_vista: parseInputValue(formData.a_vista),
-      a_prazo: parseInputValue(formData.a_prazo),
-      valor_m: parseInputValue(formData.valor_m),
-      valor_m2: parseInputValue(formData.valor_m2),
+      a_prazo: parseInputValue(formData.a_prazo || aPrazo),
+      valor_m: parseInputValue(formData.valor_m || valorM),
+      valor_m2: parseInputValue(formData.valor_m2 || valorM2),
       largura: parseInputValue(formData.largura),
       gramatura: parseInputValue(formData.gramatura),
       rendimento_m: parseInputValue(formData.rendimento_m),
       rendimento_m2: parseInputValue(formData.rendimento_m2),
       composicao: formData.composicao,
       descricao: formData.descricao,
-      imagem_url: formData.imagem_url,
+      imagem_url: formData.imagem_url ? formData.imagem_url.trim() : null,
       tecnologias: formData.tecnologias,
       conforto_text: formData.conforto_text,
       versatil_text: formData.versatil_text
     }
 
-    let productId = editingId
+    try {
+      let productId = editingId
+      let error = null
 
-    if (editingId) {
-      await supabase.from('produtos').update(payload).eq('id', editingId)
-      await supabase.from('produto_cores').delete().eq('produto_id', editingId)
-    } else {
-      const { data } = await supabase.from('produtos').insert([payload]).select()
-      if (data && data[0]) productId = data[0].id
-    }
+      if (editingId) {
+        const { error: updateError } = await supabase
+          .from('produtos')
+          .update(payload)
+          .eq('id', editingId)
+        
+        error = updateError
+      } else {
+        const { data, error: insertError } = await supabase
+          .from('produtos')
+          .insert([payload])
+          .select()
 
-    if (productId && formCores.length > 0) {
-      const coresPayload = formCores
-        .filter(c => c.nome_cor.trim() !== '')
-        .map(c => ({
-          produto_id: productId,
-          nome_cor: c.nome_cor,
-          codigo_hex: c.codigo_hex || '#000000',
-          imagem_url: c.imagem_url || ''
-        }))
-
-      if (coresPayload.length > 0) {
-        await supabase.from('produto_cores').insert(coresPayload)
+        error = insertError
+        if (data && data[0]) productId = data[0].id
       }
-    }
 
-    closeModal()
-    fetchProducts()
-    fetchAllProducts()
+      if (error) {
+        console.error('Erro Supabase:', error)
+        alert(`Erro ao salvar produto: ${error.message}`)
+        return
+      }
+
+      if (productId) {
+        await supabase.from('produto_cores').delete().eq('produto_id', productId)
+
+        if (formCores.length > 0) {
+          const coresPayload = formCores
+            .filter(c => c.nome_cor.trim() !== '')
+            .map(c => ({
+              produto_id: productId,
+              nome_cor: c.nome_cor,
+              codigo_hex: c.codigo_hex || '#000000',
+              imagem_url: c.imagem_url || ''
+            }))
+
+          if (coresPayload.length > 0) {
+            await supabase.from('produto_cores').insert(coresPayload)
+          }
+        }
+      }
+
+      closeModal()
+      fetchProducts()
+      fetchAllProducts()
+    } catch (err) {
+      console.error('Erro:', err)
+      alert('Ocorreu um erro ao guardar.')
+    }
   }
 
   const handleDelete = async (id) => {
@@ -352,7 +381,9 @@ export default function App() {
         {globalSearchTerm ? (
           <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {filteredGlobalProducts.map((p) => {
-              const currentImage = selectedColorsMap[p.id] || p.imagem_url
+              const selectedColorObj = selectedColorsMap[p.id]
+              const currentImage = selectedColorObj?.imagem_url || p.imagem_url
+              const selectedColorName = selectedColorObj?.nome_cor ? ` - ${selectedColorObj.nome_cor.toUpperCase()}` : ''
 
               return (
                 <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '25px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
@@ -362,7 +393,7 @@ export default function App() {
 
                   <div style={{ textAlign: 'center', marginBottom: '15px' }}>
                     <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '32px', margin: '0 0 8px 0', color: '#0f172a', fontWeight: 'bold' }}>
-                      {p.nome?.toUpperCase()}
+                      {p.nome?.toUpperCase()}{selectedColorName}
                     </h2>
                     <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>{p.descricao}</p>
                   </div>
@@ -381,17 +412,20 @@ export default function App() {
                       <div style={{ marginTop: '15px', textAlign: 'center' }}>
                         <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                          {p.imagem_url && (
-                            <button onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: p.imagem_url })} style={{ width: '26px', height: '26px', borderRadius: '50%', border: currentImage === p.imagem_url ? '2px solid #059669' : '1px solid #ccc', cursor: 'pointer', backgroundColor: '#fff', fontSize: '9px' }}>
-                              Pad
-                            </button>
-                          )}
                           {p.produto_cores.map((cor) => (
                             <button
                               key={cor.id}
-                              onClick={() => cor.imagem_url && setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor.imagem_url })}
+                              onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor })}
                               title={cor.nome_cor}
-                              style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: cor.codigo_hex || '#000', border: currentImage === cor.imagem_url ? '3px solid #059669' : '2px solid white', boxShadow: '0 0 0 1px #cbd5e1', cursor: cor.imagem_url ? 'pointer' : 'default' }}
+                              style={{ 
+                                width: '26px', 
+                                height: '26px', 
+                                borderRadius: '50%', 
+                                backgroundColor: cor.codigo_hex || '#000', 
+                                border: selectedColorObj?.id === cor.id ? '3px solid #059669' : '2px solid white', 
+                                boxShadow: '0 0 0 1px #cbd5e1', 
+                                cursor: 'pointer' 
+                              }}
                             />
                           ))}
                         </div>
