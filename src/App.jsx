@@ -60,6 +60,72 @@ export default function App() {
     return Math.round(parsed * 100) / 100
   }
 
+  // Função para recalcular À Prazo, Valor M e Valor M² com base em À Vista e Rendimentos
+  const recalcularValores = (aVistaVal, rendMVal, rendM2Val) => {
+    const aVista = parseInputValue(aVistaVal)
+    const rendM = parseInputValue(rendMVal)
+    const rendM2 = parseInputValue(rendM2Val)
+
+    let aPrazo = ''
+    let valorM = ''
+    let valorM2 = ''
+
+    if (aVista !== null && !isNaN(aVista)) {
+      // À Prazo = À Vista + 6%
+      const calcPrazo = aVista * 1.06
+      aPrazo = calcPrazo.toFixed(2).replace('.', ',')
+
+      // Valor M = À Vista / Rendimento M
+      if (rendM && rendM > 0) {
+        const calcValorM = aVista / rendM
+        valorM = calcValorM.toFixed(2).replace('.', ',')
+      }
+
+      // Valor M² = À Vista / Rendimento M²
+      if (rendM2 && rendM2 > 0) {
+        const calcValorM2 = aVista / rendM2
+        valorM2 = calcValorM2.toFixed(2).replace('.', ',')
+      }
+    }
+
+    return { aPrazo, valorM, valorM2 }
+  }
+
+  const handleAVistaChange = (e) => {
+    const novoAVista = e.target.value
+    const { aPrazo, valorM, valorM2 } = recalcularValores(novoAVista, formData.rendimento_m, formData.rendimento_m2)
+
+    setFormData((prev) => ({
+      ...prev,
+      a_vista: novoAVista,
+      a_prazo: aPrazo,
+      valor_m: valorM,
+      valor_m2: valorM2
+    }))
+  }
+
+  const handleRendimentoMChange = (e) => {
+    const novoRendM = e.target.value
+    const { valorM } = recalcularValores(formData.a_vista, novoRendM, formData.rendimento_m2)
+
+    setFormData((prev) => ({
+      ...prev,
+      rendimento_m: novoRendM,
+      valor_m: valorM
+    }))
+  }
+
+  const handleRendimentoM2Change = (e) => {
+    const novoRendM2 = e.target.value
+    const { valorM2 } = recalcularValores(formData.a_vista, formData.rendimento_m, novoRendM2)
+
+    setFormData((prev) => ({
+      ...prev,
+      rendimento_m2: novoRendM2,
+      valor_m2: valorM2
+    }))
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -780,10 +846,10 @@ export default function App() {
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Vista (R$)</label>
-                  <input type="text" value={formData.a_vista} onChange={e => setFormData({...formData, a_vista: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
+                  <input type="text" value={formData.a_vista} onChange={handleAVistaChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Prazo (R$)</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Prazo (+6%)</label>
                   <input type="text" value={formData.a_prazo} onChange={e => setFormData({...formData, a_prazo: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
@@ -810,11 +876,11 @@ export default function App() {
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M</label>
-                  <input type="text" value={formData.rendimento_m} onChange={e => setFormData({...formData, rendimento_m: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="3,10" />
+                  <input type="text" value={formData.rendimento_m} onChange={handleRendimentoMChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="3,10" />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Rendimento M²</label>
-                  <input type="text" value={formData.rendimento_m2} onChange={e => setFormData({...formData, rendimento_m2: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="5,00" />
+                  <input type="text" value={formData.rendimento_m2} onChange={handleRendimentoM2Change} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="5,00" />
                 </div>
               </div>
               <div>
