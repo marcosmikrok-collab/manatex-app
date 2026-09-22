@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, UserPlus, Users, ShieldAlert, ArrowLeft, Download, KeyRound, Image as ImageIcon, Palette } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -19,19 +19,12 @@ const formatNumero = (valor, sufixo = '') => {
 export default function App() {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [isForgotPassword, setIsForgotPassword] = useState(false)
-  const [isResettingPassword, setIsResettingPassword] = useState(false)
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
   const [authError, setAuthError] = useState('')
-  const [authMessage, setAuthMessage] = useState('')
 
   const [selectedBrand, setSelectedBrand] = useState(null)
-  const [activeTab, setActiveTab] = useState('products')
-
   const [products, setProducts] = useState([])
   const [allProducts, setAllProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -40,10 +33,8 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
-  // Estado para controlo da imagem selecionada em cada produto
+  // Mapeamento de imagens dinâmicas por cor nos cards
   const [selectedColorsMap, setSelectedColorsMap] = useState({})
-
-  const [usersList, setUsersList] = useState([])
 
   const [formData, setFormData] = useState({
     nome: '', a_vista: '', a_prazo: '', valor_m: '', valor_m2: '',
@@ -51,7 +42,6 @@ export default function App() {
     descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
   })
 
-  // Lista dinâmica de cores no modal de edição
   const [formCores, setFormCores] = useState([])
 
   const parseInputValue = (val) => {
@@ -117,9 +107,8 @@ export default function App() {
       if (session) fetchUserProfile(session.user.id)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (event === 'PASSWORD_RECOVERY') setIsResettingPassword(true)
       if (session) fetchUserProfile(session.user.id)
       else setProfile(null)
     })
@@ -129,8 +118,7 @@ export default function App() {
 
   const fetchUserProfile = async (userId) => {
     try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
-      if (error) return
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
       if (data) setProfile(data)
       else setProfile({ id: userId, role: 'user', approved: true })
     } catch (err) {
@@ -141,76 +129,37 @@ export default function App() {
   const fetchProducts = async () => {
     if (!selectedBrand) return
     setLoading(true)
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('produtos')
       .select('*, produto_cores(*)')
       .eq('marca', selectedBrand)
       .order('id', { ascending: true })
 
-    if (!error) setProducts(data || [])
+    setProducts(data || [])
     setLoading(false)
   }
 
   const fetchAllProducts = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('produtos')
       .select('*, produto_cores(*)')
       .order('nome', { ascending: true })
 
-    if (!error) setAllProducts(data || [])
-  }
-
-  const fetchUsers = async () => {
-    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-    if (data) setUsersList(data)
+    setAllProducts(data || [])
   }
 
   useEffect(() => {
     if (session && profile?.approved) {
       fetchAllProducts()
       if (selectedBrand) fetchProducts()
-      if (profile?.role === 'admin') fetchUsers()
     }
   }, [session, profile, selectedBrand])
 
   const handleAuth = async (e) => {
     e.preventDefault()
     setAuthError('')
-    setAuthMessage('')
-
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) setAuthError(error.message)
-      else {
-        setAuthMessage('Registo efetuado! Confirme o seu e-mail.')
-        setIsSignUp(false)
-      }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setAuthError('E-mail ou palavra-passe incorretos.')
-    }
-  }
-
-  const handleForgotPassword = async (e) => {
-    e.preventDefault()
-    setAuthError('')
-    setAuthMessage('')
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
-    if (error) setAuthError('Erro: ' + error.message)
-    else setAuthMessage('E-mail de recuperação enviado!')
-  }
-
-  const handleUpdatePassword = async (e) => {
-    e.preventDefault()
-    setAuthError('')
-    setAuthMessage('')
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) setAuthError('Erro: ' + error.message)
-    else {
-      setAuthMessage('Palavra-passe alterada!')
-      setIsResettingPassword(false)
-      setNewPassword('')
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) setAuthError('E-mail ou palavra-passe incorretos.')
   }
 
   const handleLogout = () => {
@@ -345,14 +294,12 @@ export default function App() {
 
   const filteredGlobalProducts = allProducts.filter(p =>
     p.nome?.toLowerCase().includes(globalSearchTerm.toLowerCase()) ||
-    p.composicao?.toLowerCase().includes(globalSearchTerm.toLowerCase()) ||
-    p.descricao?.toLowerCase().includes(globalSearchTerm.toLowerCase())
+    p.composicao?.toLowerCase().includes(globalSearchTerm.toLowerCase())
   )
 
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827'
 
-  // LOGIN E RESTANTES TELAS (MANTIDAS CONFORME O ANTERIOR)
   if (!session) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
@@ -378,8 +325,8 @@ export default function App() {
     )
   }
 
-  // TELA INICIAL / BUSCA GLOBAL DE PRODUTOS
-  if (!selectedBrand && activeTab !== 'users') {
+  // TELA DE SELEÇÃO DE MARCA / BUSCA GLOBAL
+  if (!selectedBrand) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <header style={{ width: '100%', maxWidth: '900px', backgroundColor: '#059669', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -403,9 +350,8 @@ export default function App() {
         </div>
 
         {globalSearchTerm ? (
-          <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '25px' }}>
+          <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {filteredGlobalProducts.map((p) => {
-              // Verifica qual imagem está selecionada dinamicamente para este produto
               const currentImage = selectedColorsMap[p.id] || p.imagem_url
 
               return (
@@ -418,67 +364,33 @@ export default function App() {
                     <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '32px', margin: '0 0 8px 0', color: '#0f172a', fontWeight: 'bold' }}>
                       {p.nome?.toUpperCase()}
                     </h2>
-                    <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>
-                      {p.descricao || 'Excelente caimento e qualidade garantida.'}
-                    </p>
+                    <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>{p.descricao}</p>
                   </div>
 
-                  {/* IMAGEM PRINCIPAL (MUTA DINAMICAMENTE AO CLICAR NA COR) */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
                     {currentImage ? (
-                      <img src={currentImage} alt={p.nome} style={{ maxHeight: '220px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px', transition: 'all 0.3s ease' }} />
+                      <img src={currentImage} alt={p.nome} style={{ maxHeight: '220px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
                     ) : (
-                      <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                      <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
                         <ImageIcon size={28} />
                       </div>
                     )}
 
-                    {/* SEÇÃO DE VARIANTES/CORES (BOLINHAS CLICÁVEIS) */}
                     {p.produto_cores && p.produto_cores.length > 0 && (
                       <div style={{ marginTop: '15px', textAlign: 'center' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>
-                          CORES DISPONÍVEIS:
-                        </span>
-                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                          {/* Opção para voltar à imagem original padrão */}
+                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                           {p.imagem_url && (
-                            <button
-                              onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: p.imagem_url })}
-                              title="Foto Principal"
-                              style={{
-                                width: '28px',
-                                height: '28px',
-                                borderRadius: '50%',
-                                border: currentImage === p.imagem_url ? '3px solid #059669' : '1px solid #ccc',
-                                cursor: 'pointer',
-                                backgroundColor: '#f8fafc',
-                                fontSize: '10px',
-                                fontWeight: 'bold'
-                              }}
-                            >
+                            <button onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: p.imagem_url })} style={{ width: '26px', height: '26px', borderRadius: '50%', border: currentImage === p.imagem_url ? '2px solid #059669' : '1px solid #ccc', cursor: 'pointer', backgroundColor: '#fff', fontSize: '9px' }}>
                               Pad
                             </button>
                           )}
-
                           {p.produto_cores.map((cor) => (
                             <button
                               key={cor.id}
-                              onClick={() => {
-                                if (cor.imagem_url) {
-                                  setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor.imagem_url })
-                                }
-                              }}
+                              onClick={() => cor.imagem_url && setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor.imagem_url })}
                               title={cor.nome_cor}
-                              style={{
-                                width: '28px',
-                                height: '28px',
-                                borderRadius: '50%',
-                                backgroundColor: cor.codigo_hex || '#000',
-                                border: currentImage === cor.imagem_url ? '3px solid #059669' : '2px solid white',
-                                boxShadow: '0 0 0 1px #cbd5e1',
-                                cursor: cor.imagem_url ? 'pointer' : 'default',
-                                opacity: cor.imagem_url ? 1 : 0.6
-                              }}
+                              style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: cor.codigo_hex || '#000', border: currentImage === cor.imagem_url ? '3px solid #059669' : '2px solid white', boxShadow: '0 0 0 1px #cbd5e1', cursor: cor.imagem_url ? 'pointer' : 'default' }}
                             />
                           ))}
                         </div>
@@ -486,23 +398,7 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* FICHA TÉCNICA */}
-                  <div style={{ border: '1.5px solid #c8d0f8', borderRadius: '12px', padding: '10px 20px', margin: '20px 0', backgroundColor: '#fafafa' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e7ff', fontSize: '13px' }}>
-                      <span style={{ color: '#64748b' }}>Composição</span>
-                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{p.composicao || '-'}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e7ff', fontSize: '13px' }}>
-                      <span style={{ color: '#64748b' }}>Gramatura</span>
-                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.gramatura, 'g')}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' }}>
-                      <span style={{ color: '#64748b' }}>Largura</span>
-                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.largura, 'm')}</span>
-                    </div>
-                  </div>
-
-                  {/* VALORES */}
+                  {/* VALORES E FICHA TÉCNICA */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', textAlign: 'center' }}>
                     <div>
                       <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>À Vista</span>
@@ -512,27 +408,26 @@ export default function App() {
                       <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>À Prazo (+6%)</span>
                       <strong style={{ fontSize: '14px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</strong>
                     </div>
-                  </div>
-
-                  {profile?.role === 'admin' && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '15px' }}>
-                      <button onClick={() => openModal(p)} style={{ border: 'none', background: '#e2e8f0', cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Edit2 size={14} /> Editar / Adicionar Cores
-                      </button>
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Rend. M/KG</span>
+                      <strong style={{ fontSize: '14px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</strong>
                     </div>
-                  )}
-
+                    <div>
+                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Rend. M²/KG</span>
+                      <strong style={{ fontSize: '14px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</strong>
+                    </div>
+                  </div>
                 </div>
               )
             })}
           </div>
         ) : (
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: '900px' }}>
-            <div onClick={() => { setSelectedBrand('manatex'); setActiveTab('products'); }} style={{ flex: '1 1 260px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
+            <div onClick={() => setSelectedBrand('manatex')} style={{ flex: '1 1 260px', backgroundColor: 'white', border: '2px solid #059669', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
               <img src="/mana.jpg" alt="Manatex" style={{ maxHeight: '50px', marginBottom: '10px' }} />
               <p style={{ color: '#64748b', margin: 0 }}>Tabela de produtos Manatex</p>
             </div>
-            <div onClick={() => { setSelectedBrand('msports'); setActiveTab('products'); }} style={{ flex: '1 1 260px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
+            <div onClick={() => setSelectedBrand('msports')} style={{ flex: '1 1 260px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
               <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '50px', marginBottom: '10px', backgroundColor: 'white', padding: '4px' }} />
               <p style={{ color: '#9ca3af', margin: 0 }}>Tabela de produtos MSports</p>
             </div>
@@ -542,6 +437,7 @@ export default function App() {
     )
   }
 
+  // VISUALIZAÇÃO COMPLETA DA TABELA DE PREÇOS E RENDIMENTOS DA MARCA
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
       <header style={{ backgroundColor: brandColor, color: 'white', padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -558,38 +454,64 @@ export default function App() {
         )}
       </header>
 
-      {/* TABELA DE PRODUTOS */}
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+      {/* CAMPO DE PESQUISA DENTRO DA MARCA */}
+      <div style={{ marginBottom: '15px', position: 'relative' }}>
+        <Search size={18} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
+        <input
+          type="text"
+          placeholder="Filtrar por tecido ou composição..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ width: '100%', padding: '8px 12px 8px 38px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }}
+        />
+      </div>
+
+      {/* TABELA DETALHADA COM TODAS AS COLUNAS RESTAURADAS */}
+      <div style={{ backgroundColor: 'white', borderRadius: '8px', overflowX: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', whiteSpace: 'nowrap' }}>
           <thead>
-            <tr style={{ backgroundColor: brandColor, color: 'white' }}>
-              <th style={{ padding: '10px', textAlign: 'left' }}>Produto</th>
-              <th style={{ padding: '10px', textAlign: 'left' }}>Cores</th>
-              <th style={{ padding: '10px', textAlign: 'left' }}>À Vista</th>
-              <th style={{ padding: '10px', textAlign: 'left' }}>Composição</th>
-              {profile?.role === 'admin' && <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>}
+            <tr style={{ backgroundColor: brandColor, color: 'white', textAlign: 'left' }}>
+              <th style={{ padding: '10px 12px' }}>Produto</th>
+              <th style={{ padding: '10px 12px' }}>Cores</th>
+              <th style={{ padding: '10px 12px' }}>À Vista</th>
+              <th style={{ padding: '10px 12px' }}>À Prazo (+6%)</th>
+              <th style={{ padding: '10px 12px' }}>Valor M</th>
+              <th style={{ padding: '10px 12px' }}>Valor M²</th>
+              <th style={{ padding: '10px 12px' }}>Rend. M</th>
+              <th style={{ padding: '10px 12px' }}>Rend. M²</th>
+              <th style={{ padding: '10px 12px' }}>Gramatura</th>
+              <th style={{ padding: '10px 12px' }}>Largura</th>
+              <th style={{ padding: '10px 12px' }}>Composição</th>
+              {profile?.role === 'admin' && <th style={{ padding: '10px 12px', textAlign: 'center' }}>Ações</th>}
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map((p) => (
-              <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={{ padding: '10px', fontWeight: 'bold' }}>{p.nome}</td>
-                <td style={{ padding: '10px' }}>
-                  <div style={{ display: 'flex', gap: '4px' }}>
+            {filteredProducts.map((p, idx) => (
+              <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                <td style={{ padding: '10px 12px', fontWeight: 'bold', color: '#0f172a' }}>{p.nome}</td>
+                <td style={{ padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', maxWidth: '90px' }}>
                     {p.produto_cores?.map((c) => (
-                      <span key={c.id} title={c.nome_cor} style={{ width: '14px', height: '14px', borderRadius: '50%', backgroundColor: c.codigo_hex, border: '1px solid #ccc', display: 'inline-block' }} />
+                      <span key={c.id} title={c.nome_cor} style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: c.codigo_hex, border: '1px solid #cbd5e1', display: 'inline-block' }} />
                     ))}
                   </div>
                 </td>
-                <td style={{ padding: '10px', color: '#059669', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
-                <td style={{ padding: '10px' }}>{p.composicao}</td>
+                <td style={{ padding: '10px 12px', color: '#059669', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
+                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</td>
+                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatMoeda(p.valor_m)}</td>
+                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatMoeda(p.valor_m2)}</td>
+                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</td>
+                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
+                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.gramatura, 'g')}</td>
+                <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.largura, 'm')}</td>
+                <td style={{ padding: '10px 12px', color: '#64748b' }}>{p.composicao || '-'}</td>
                 {profile?.role === 'admin' && (
-                  <td style={{ padding: '10px', textAlign: 'center' }}>
-                    <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb' }}>
-                      <Edit2 size={15} />
+                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                    <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', padding: '2px' }}>
+                      <Edit2 size={14} />
                     </button>
-                    <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626', marginLeft: '8px' }}>
-                      <Trash2 size={15} />
+                    <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626', marginLeft: '6px', padding: '2px' }}>
+                      <Trash2 size={14} />
                     </button>
                   </td>
                 )}
@@ -599,10 +521,10 @@ export default function App() {
         </table>
       </div>
 
-      {/* MODAL COM A SESSÃO DINÂMICA DE CORES */}
+      {/* MODAL COMPLETO DE EDIÇÃO E CADASTRO */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h3 style={{ margin: 0, fontSize: '16px' }}>{editingId ? 'Editar Produto' : 'Novo Produto'}</h3>
               <button onClick={closeModal} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
@@ -610,79 +532,89 @@ export default function App() {
             
             <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Nome do Produto</label>
-                <input type="text" required value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="Ex: AERODRY" />
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Nome do Produto</label>
+                <input type="text" required value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="Ex: AERODRY" />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Foto Principal (URL)</label>
-                  <input type="text" value={formData.imagem_url} onChange={e => setFormData({...formData, imagem_url: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="https://..." />
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Foto Principal (URL)</label>
+                  <input type="text" value={formData.imagem_url} onChange={e => setFormData({...formData, imagem_url: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="https://..." />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>À Vista (R$)</label>
-                  <input type="text" value={formData.a_vista} onChange={handleAVistaChange} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} placeholder="0,00" />
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>À Vista (R$)</label>
+                  <input type="text" value={formData.a_vista} onChange={handleAVistaChange} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
 
-              {/* SEÇÃO DINÂMICA PARA ADICIONAR CORES */}
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', backgroundColor: '#f8fafc', marginTop: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', color: '#1e293b' }}>
-                    <Palette size={16} /> Cores / Variantes do Produto
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Rendimento M (m)</label>
+                  <input type="text" value={formData.rendimento_m} onChange={handleRendimentoMChange} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Rendimento M² (m²)</label>
+                  <input type="text" value={formData.rendimento_m2} onChange={handleRendimentoM2Change} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Largura (m)</label>
+                  <input type="text" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="1,60" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Gramatura (g)</label>
+                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="135" />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Composição</label>
+                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="100% Poliéster" />
+              </div>
+
+              {/* GESTÃO DE CORES */}
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', backgroundColor: '#f8fafc', marginTop: '5px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Palette size={14} /> Cores e Variantes
                   </span>
-                  <button type="button" onClick={addCorField} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
-                    + Adicionar Cor
+                  <button type="button" onClick={addCorField} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '3px 6px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                    + Cor
                   </button>
                 </div>
 
                 {formCores.map((cor, index) => (
-                  <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                  <div key={index} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
                     <input
                       type="text"
-                      placeholder="Nome da cor (ex: Marinho)"
+                      placeholder="Nome cor"
                       value={cor.nome_cor}
                       onChange={(e) => handleCorChange(index, 'nome_cor', e.target.value)}
-                      style={{ flex: '2', padding: '6px', fontSize: '12px' }}
+                      style={{ flex: '2', padding: '4px', fontSize: '11px' }}
                     />
                     <input
                       type="color"
-                      title="Escolher Cor"
                       value={cor.codigo_hex || '#000000'}
                       onChange={(e) => handleCorChange(index, 'codigo_hex', e.target.value)}
-                      style={{ width: '35px', height: '30px', padding: 0, border: 'none', cursor: 'pointer' }}
+                      style={{ width: '30px', height: '26px', padding: 0, border: 'none', cursor: 'pointer' }}
                     />
                     <input
                       type="text"
-                      placeholder="URL da Foto desta cor"
+                      placeholder="URL Foto da cor"
                       value={cor.imagem_url}
                       onChange={(e) => handleCorChange(index, 'imagem_url', e.target.value)}
-                      style={{ flex: '3', padding: '6px', fontSize: '12px' }}
+                      style={{ flex: '3', padding: '4px', fontSize: '11px' }}
                     />
                     <button type="button" onClick={() => removeCorField(index)} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer' }}>
-                      <X size={16} />
+                      <X size={14} />
                     </button>
                   </div>
                 ))}
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Largura (m)</label>
-                  <input type="text" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Gramatura (g)</label>
-                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Composição</label>
-                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }} />
-              </div>
-
-              <button type="submit" style={{ backgroundColor: brandColor, color: 'white', border: 'none', padding: '10px', borderRadius: '5px', fontWeight: 'bold', marginTop: '10px', cursor: 'pointer' }}>
+              <button type="submit" style={{ backgroundColor: brandColor, color: 'white', border: 'none', padding: '8px', borderRadius: '5px', fontWeight: 'bold', marginTop: '8px', cursor: 'pointer' }}>
                 {editingId ? 'Atualizar Produto' : 'Cadastrar Produto'}
               </button>
             </form>
