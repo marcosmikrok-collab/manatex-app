@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, Shield, Zap } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -325,7 +325,7 @@ export default function App() {
     )
   }
 
-  // TELA DE SELEÇÃO DE MARCA / BUSCA GLOBAL
+  // TELA DE SELEÇÃO DE MARCA / BUSCA GLOBAL DE CARDS
   if (!selectedBrand) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -367,6 +367,7 @@ export default function App() {
                     <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>{p.descricao}</p>
                   </div>
 
+                  {/* IMAGEM E VARIANTES DE COR */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '20px 0' }}>
                     {currentImage ? (
                       <img src={currentImage} alt={p.nome} style={{ maxHeight: '220px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
@@ -398,7 +399,36 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* VALORES E FICHA TÉCNICA */}
+                  {/* SEÇÃO DE CARACTERÍSTICAS / TECNOLOGIAS */}
+                  {(p.tecnologias || p.conforto_text || p.versatil_text) && (
+                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 15px', margin: '15px 0' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                        <Sparkles size={14} /> Características e Tecnologias
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: '#14532d' }}>
+                        {p.tecnologias && <div><strong>Tecnologias:</strong> {p.tecnologias}</div>}
+                        {p.conforto_text && <div><strong>Conforto:</strong> {p.conforto_text}</div>}
+                        {p.versatil_text && <div><strong>Versatilidade:</strong> {p.versatil_text}</div>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* FICHA TÉCNICA E PREÇOS */}
+                  <div style={{ border: '1.5px solid #c8d0f8', borderRadius: '12px', padding: '10px 20px', margin: '15px 0', backgroundColor: '#fafafa' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b' }}>Composição</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{p.composicao || '-'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b' }}>Gramatura</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.gramatura, 'g')}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b' }}>Largura</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.largura, 'm')}</span>
+                    </div>
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', textAlign: 'center' }}>
                     <div>
                       <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>À Vista</span>
@@ -437,7 +467,7 @@ export default function App() {
     )
   }
 
-  // VISUALIZAÇÃO COMPLETA DA TABELA DE PREÇOS E RENDIMENTOS DA MARCA
+  // VISUALIZAÇÃO COMPLETA DA TABELA DE PREÇOS E RENDIMENTOS
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
       <header style={{ backgroundColor: brandColor, color: 'white', padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -466,7 +496,7 @@ export default function App() {
         />
       </div>
 
-      {/* TABELA DETALHADA COM TODAS AS COLUNAS RESTAURADAS */}
+      {/* TABELA DETALHADA COM TODAS AS COLUNAS */}
       <div style={{ backgroundColor: 'white', borderRadius: '8px', overflowX: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', whiteSpace: 'nowrap' }}>
           <thead>
@@ -482,6 +512,7 @@ export default function App() {
               <th style={{ padding: '10px 12px' }}>Gramatura</th>
               <th style={{ padding: '10px 12px' }}>Largura</th>
               <th style={{ padding: '10px 12px' }}>Composição</th>
+              <th style={{ padding: '10px 12px' }}>Tecnologias</th>
               {profile?.role === 'admin' && <th style={{ padding: '10px 12px', textAlign: 'center' }}>Ações</th>}
             </tr>
           </thead>
@@ -505,6 +536,7 @@ export default function App() {
                 <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.gramatura, 'g')}</td>
                 <td style={{ padding: '10px 12px', color: '#334155' }}>{formatNumero(p.largura, 'm')}</td>
                 <td style={{ padding: '10px 12px', color: '#64748b' }}>{p.composicao || '-'}</td>
+                <td style={{ padding: '10px 12px', color: '#047857', fontWeight: 'bold' }}>{p.tecnologias || '-'}</td>
                 {profile?.role === 'admin' && (
                   <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                     <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', padding: '2px' }}>
@@ -521,10 +553,10 @@ export default function App() {
         </table>
       </div>
 
-      {/* MODAL COMPLETO DE EDIÇÃO E CADASTRO */}
+      {/* MODAL COMPLETO DE EDIÇÃO COM CAMPOS DE CARACTERÍSTICAS */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h3 style={{ margin: 0, fontSize: '16px' }}>{editingId ? 'Editar Produto' : 'Novo Produto'}</h3>
               <button onClick={closeModal} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
@@ -574,8 +606,30 @@ export default function App() {
                 <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="100% Poliéster" />
               </div>
 
+              {/* CAMPOS DE CARACTERÍSTICAS / TECNOLOGIAS */}
+              <div style={{ border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px', backgroundColor: '#f0fdf4' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'block', marginBottom: '8px' }}>
+                  Atributos e Tecnologias do Produto
+                </span>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Tecnologias (ex: UV 50+, Dry, Anti-pilling)</label>
+                    <input type="text" value={formData.tecnologias} onChange={e => setFormData({...formData, tecnologias: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Conforto (ex: Toque macio e leve)</label>
+                    <input type="text" value={formData.conforto_text} onChange={e => setFormData({...formData, conforto_text: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Versatilidade / Uso Recomendado (ex: Ideal para moda fitness)</label>
+                    <input type="text" value={formData.versatil_text} onChange={e => setFormData({...formData, versatil_text: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+              </div>
+
               {/* GESTÃO DE CORES */}
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', backgroundColor: '#f8fafc', marginTop: '5px' }}>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', backgroundColor: '#f8fafc' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <Palette size={14} /> Cores e Variantes
