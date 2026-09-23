@@ -265,7 +265,7 @@ export default function App() {
     import('html2pdf.js').then((html2pdf) => {
       const opt = {
         margin: 10,
-        filename: `${productName.toLowerCase().replace(/\s+/g, '_')}_ficha_tecnica.pdf`,
+        filename: `${productName.toLowerCase().replace(/\s+/g, '_')}_dados_do_produto.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
