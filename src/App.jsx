@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, UserCheck, ShieldAlert, UserPlus } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, UserCheck, ShieldAlert, UserPlus, Users, Shield } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -24,7 +24,7 @@ export default function App() {
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [authSuccess, setAuthSuccess] = useState('')
-  const [isRegistering, setIsRegistering] = useState(false) // Alterna entre Login e Registo
+  const [isRegistering, setIsRegistering] = useState(false)
 
   const [selectedBrand, setSelectedBrand] = useState(null)
   const [products, setProducts] = useState([])
@@ -35,8 +35,8 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
-  // Estado para armazenar utilizadores com cadastro pendente
-  const [pendingUsers, setPendingUsers] = useState([])
+  // Lista de todos os perfis do sistema (para o painel de administração)
+  const [allProfiles, setAllProfiles] = useState([])
 
   // Mapeamento da cor/imagem selecionada por produto
   const [selectedColorsMap, setSelectedColorsMap] = useState({})
@@ -131,41 +131,63 @@ export default function App() {
     }
   }
 
-  // Buscar cadastros que aguardam aprovação do administrador
-  const fetchPendingUsers = async () => {
+  // Buscar todos os perfis de utilizadores para o painel do administrador
+  const fetchAllProfiles = async () => {
     if (profile?.role !== 'admin') return
     try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('approved', false)
-      setPendingUsers(data || [])
+      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
+      setAllProfiles(data || [])
     } catch (err) {
-      console.error('Erro ao buscar perfis pendentes:', err)
+      console.error('Erro ao buscar perfis:', err)
     }
   }
 
-  // Aprovar um utilizador
-  const handleApproveUser = async (userId) => {
+  // Aprovar ou desaprovar utilizador
+  const handleToggleApproval = async (userId, currentApproved) => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ approved: true })
+        .update({ approved: !currentApproved })
         .eq('id', userId)
 
-      if (error) {
-        alert('Erro ao aprovar utilizador: ' + error.message)
-      } else {
-        fetchPendingUsers()
-      }
+      if (error) alert('Erro ao alterar estado: ' + error.message)
+      else fetchAllProfiles()
     } catch (err) {
-      console.error('Erro na aprovação:', err)
+      console.error(err)
+    }
+  }
+
+  // Alterar permissão (Role: user / admin)
+  const handleChangeRole = async (userId, newRole) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId)
+
+      if (error) alert('Erro ao alterar permissão: ' + error.message)
+      else fetchAllProfiles()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  // Excluir conta do perfil
+  const handleDeleteProfile = async (userId) => {
+    if (confirm("Tem a certeza que pretende remover este utilizador do sistema?")) {
+      try {
+        const { error } = await supabase.from('profiles').delete().eq('id', userId)
+        if (error) alert('Erro ao remover: ' + error.message)
+        else fetchAllProfiles()
+      } catch (err) {
+        console.error(err)
+      }
     }
   }
 
   useEffect(() => {
     if (session && profile?.role === 'admin') {
-      fetchPendingUsers()
+      fetchAllProfiles()
     }
   }, [session, profile])
 
@@ -204,13 +226,11 @@ export default function App() {
     setAuthSuccess('')
 
     if (isRegistering) {
-      // PROCESSO DE REGISTO/CRIAR CONTA
       const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) {
         setAuthError(error.message)
       } else {
         if (data?.user) {
-          // Insere o perfil na tabela profiles aguardando aprovação
           await supabase.from('profiles').upsert([
             { id: data.user.id, email: email, role: 'user', approved: false }
           ])
@@ -219,7 +239,6 @@ export default function App() {
         setIsRegistering(false)
       }
     } else {
-      // PROCESSO DE LOGIN
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setAuthError('E-mail ou palavra-passe incorretos.')
     }
@@ -232,7 +251,6 @@ export default function App() {
 
   const handleSaveProduct = async (e) => {
     e.preventDefault()
-
     const { aPrazo, valorM, valorM2 } = recalcularValores(formData.a_vista, formData.rendimento_m, formData.rendimento_m2)
 
     const payload = {
@@ -259,31 +277,21 @@ export default function App() {
       let error = null
 
       if (editingId) {
-        const { error: updateError } = await supabase
-          .from('produtos')
-          .update(payload)
-          .eq('id', editingId)
-        
+        const { error: updateError } = await supabase.from('produtos').update(payload).eq('id', editingId)
         error = updateError
       } else {
-        const { data, error: insertError } = await supabase
-          .from('produtos')
-          .insert([payload])
-          .select()
-
+        const { data, error: insertError } = await supabase.from('produtos').insert([payload]).select()
         error = insertError
         if (data && data[0]) productId = data[0].id
       }
 
       if (error) {
-        console.error('Erro Supabase:', error)
         alert(`Erro ao salvar produto: ${error.message}`)
         return
       }
 
       if (productId) {
         await supabase.from('produto_cores').delete().eq('produto_id', productId)
-
         if (formCores.length > 0) {
           const coresPayload = formCores
             .filter(c => c.nome_cor.trim() !== '')
@@ -304,7 +312,6 @@ export default function App() {
       fetchProducts()
       fetchAllProducts()
     } catch (err) {
-      console.error('Erro:', err)
       alert('Ocorreu um erro ao guardar.')
     }
   }
@@ -320,11 +327,9 @@ export default function App() {
   const openModal = (product = null) => {
     if (product) {
       setEditingId(product.id)
-      
       const aVistaStr = product.a_vista !== null && product.a_vista !== undefined ? String(product.a_vista).replace('.', ',') : ''
       const rendMStr = product.rendimento_m !== null && product.rendimento_m !== undefined ? String(product.rendimento_m).replace('.', ',') : ''
       const rendM2Str = product.rendimento_m2 !== null && product.rendimento_m2 !== undefined ? String(product.rendimento_m2).replace('.', ',') : ''
-
       const { aPrazo, valorM, valorM2 } = recalcularValores(aVistaStr, rendMStr, rendM2Str)
 
       setFormData({
@@ -344,7 +349,6 @@ export default function App() {
         conforto_text: product.conforto_text || '',
         versatil_text: product.versatil_text || ''
       })
-
       setFormCores(product.produto_cores || [])
     } else {
       setEditingId(null)
@@ -364,14 +368,8 @@ export default function App() {
     setFormCores([])
   }
 
-  const addCorField = () => {
-    setFormCores([...formCores, { nome_cor: '', codigo_hex: '#000000', imagem_url: '' }])
-  }
-
-  const removeCorField = (index) => {
-    setFormCores(formCores.filter((_, i) => i !== index))
-  }
-
+  const addCorField = () => setFormCores([...formCores, { nome_cor: '', codigo_hex: '#000000', imagem_url: '' }])
+  const removeCorField = (index) => setFormCores(formCores.filter((_, i) => i !== index))
   const handleCorChange = (index, field, value) => {
     const newCores = [...formCores]
     newCores[index][field] = value
@@ -391,7 +389,7 @@ export default function App() {
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827'
 
-  // TELA DE AUTENTICAÇÃO (LOGIN / REGISTO)
+  // LOGIN / REGISTO
   if (!session) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
@@ -437,7 +435,7 @@ export default function App() {
     )
   }
 
-  // TELA DE BLOQUEIO / AGUARDANDO APROVAÇÃO
+  // TELA DE ESPERA DE APROVAÇÃO
   if (profile && !profile.approved) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
@@ -445,7 +443,7 @@ export default function App() {
           <ShieldAlert size={48} color="#d97706" style={{ marginBottom: '15px' }} />
           <h2 style={{ margin: '0 0 10px 0', color: '#1e293b', fontSize: '20px' }}>Aprovação Pendente</h2>
           <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.5', marginBottom: '20px' }}>
-            O seu cadastro foi efetuado com sucesso, mas ainda precisa ser aprovado por um administrador para aceder ao catálogo.
+            O seu cadastro foi efetuado, mas aguarda a aprovação de um administrador para aceder ao catálogo.
           </p>
           <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <LogOut size={16} /> Sair
@@ -455,7 +453,7 @@ export default function App() {
     )
   }
 
-  // TELA DE SELEÇÃO DE MARCA / BUSCA GLOBAL DE CARDS
+  // PAINEL PRINCIPAL
   if (!selectedBrand) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -466,21 +464,65 @@ export default function App() {
           </button>
         </header>
 
-        {/* PAINEL DE APROVAÇÃO DE UTILIZADORES PARA O ADMINISTRADOR */}
-        {profile?.role === 'admin' && pendingUsers.length > 0 && (
-          <div style={{ width: '100%', maxWidth: '900px', backgroundColor: '#fffbe3', border: '1px solid #ffe58f', borderRadius: '10px', padding: '15px', marginBottom: '20px', boxSizing: 'border-box' }}>
-            <h3 style={{ margin: '0 0 10px 0', color: '#856404', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <UserCheck size={18} /> Solicitamentos de Cadastro Pendentes ({pendingUsers.length})
+        {/* --- PAINEL DE GESTÃO DE UTILIZADORES EXCLUSIVO DO ADMIN --- */}
+        {profile?.role === 'admin' && (
+          <div style={{ width: '100%', maxWidth: '900px', backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '15px', marginBottom: '20px', boxSizing: 'border-box', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+            <h3 style={{ margin: '0 0 15px 0', color: '#0f172a', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={20} color="#059669" /> Gestão de Utilizadores e Permissões
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {pendingUsers.map((u) => (
-                <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: '8px 12px', borderRadius: '6px', border: '1px solid #f0e6b5' }}>
-                  <span style={{ fontSize: '13px', color: '#334155' }}>{u.email || u.id}</span>
-                  <button onClick={() => handleApproveUser(u.id)} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
-                    Aprovar
-                  </button>
-                </div>
-              ))}
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
+                    <th style={{ padding: '8px' }}>E-mail</th>
+                    <th style={{ padding: '8px' }}>Estado</th>
+                    <th style={{ padding: '8px' }}>Permissão</th>
+                    <th style={{ padding: '8px', textAlign: 'center' }}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allProfiles.map((u) => (
+                    <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '8px', fontWeight: '500' }}>{u.email || u.id}</td>
+                      <td style={{ padding: '8px' }}>
+                        {u.approved ? (
+                          <span style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>APROVADO</span>
+                        ) : (
+                          <span style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>PENDENTE</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <select
+                          value={u.role || 'user'}
+                          onChange={(e) => handleChangeRole(u.id, e.target.value)}
+                          style={{ padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '11px', fontWeight: 'bold' }}
+                        >
+                          <option value="user">Utilizador</option>
+                          <option value="admin">Administrador</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                          <button
+                            onClick={() => handleToggleApproval(u.id, u.approved)}
+                            style={{ backgroundColor: u.approved ? '#e2e8f0' : '#059669', color: u.approved ? '#475569' : 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                          >
+                            {u.approved ? 'Bloquear' : 'Aprovar'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProfile(u.id)}
+                            style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: 'none', padding: '4px 6px', borderRadius: '4px', cursor: 'pointer' }}
+                            title="Remover Utilizador"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -618,29 +660,9 @@ export default function App() {
     )
   }
 
-  // TELA DA MARCA (TABELA EM DESKTOP + CARDS EM MOBILE)
+  // TELA DA TABELA DE PRODUTOS
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
-      
-      <style>{`
-        .product-cards-mobile {
-          display: flex;
-          flex-direction: column;
-          gap: 15px;
-        }
-        .product-table-desktop {
-          display: none;
-        }
-        @media (min-width: 768px) {
-          .product-cards-mobile {
-            display: none;
-          }
-          .product-table-desktop {
-            display: block;
-          }
-        }
-      `}</style>
-
       <header style={{ backgroundColor: brandColor, color: 'white', padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button onClick={() => setSelectedBrand(null)} style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
@@ -666,85 +688,7 @@ export default function App() {
         />
       </div>
 
-      {/* VISUALIZAÇÃO EM CARTÕES (EXCLUSIVO PARA MOBILE) */}
-      <div className="product-cards-mobile">
-        {filteredProducts.map((p) => (
-          <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 'bold' }}>{p.nome}</h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>{p.composicao || 'Composição não informada'}</p>
-              </div>
-              {profile?.role === 'admin' && (
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={() => openModal(p)} style={{ border: 'none', background: '#eff6ff', color: '#2563eb', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
-                    <Edit2 size={16} />
-                  </button>
-                  <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: '#fef2f2', color: '#dc2626', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {p.produto_cores && p.produto_cores.length > 0 && (
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '12px', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', marginRight: '4px' }}>Cores:</span>
-                {p.produto_cores.map((c) => (
-                  <span key={c.id} title={c.nome_cor} style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: c.codigo_hex, border: '1px solid #cbd5e1', display: 'inline-block' }} />
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
-              <div>
-                <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>À Vista</span>
-                <strong style={{ fontSize: '15px', color: '#059669' }}>{formatMoeda(p.a_vista)}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>À Prazo (+6%)</span>
-                <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor / M</span>
-                <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>{formatMoeda(p.valor_m)}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor / M²</span>
-                <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>{formatMoeda(p.valor_m2)}</span>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', textAlign: 'center', fontSize: '11px', borderTop: '1px solid #f1f5f9', paddingTop: '8px', marginBottom: '10px' }}>
-              <div>
-                <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block' }}>Rend. M</span>
-                <strong style={{ color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block' }}>Rend. M²</span>
-                <strong style={{ color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block' }}>Gramatura</span>
-                <strong style={{ color: '#334155' }}>{formatNumero(p.gramatura, 'g')}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block' }}>Largura</span>
-                <strong style={{ color: '#334155' }}>{formatNumero(p.largura, 'm')}</strong>
-              </div>
-            </div>
-
-            {p.tecnologias && (
-              <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px', fontSize: '11px', color: '#166534' }}>
-                <strong>Tecnologias:</strong> {p.tecnologias}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* VISUALIZAÇÃO EM TABELA (EXCLUSIVO PARA DESKTOP) */}
-      <div className="product-table-desktop" style={{ backgroundColor: 'white', borderRadius: '8px', overflowX: 'auto', width: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '8px', overflowX: 'auto', width: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
           <thead>
             <tr style={{ backgroundColor: brandColor, color: 'white', textAlign: 'left' }}>
@@ -800,7 +744,7 @@ export default function App() {
         </table>
       </div>
 
-      {/* MODAL COMPLETO DE EDIÇÃO */}
+      {/* MODAL DE EDIÇÃO DE PRODUTOS */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -855,20 +799,20 @@ export default function App() {
 
               <div style={{ border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px', backgroundColor: '#f0fdf4' }}>
                 <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'block', marginBottom: '8px' }}>
-                  Atributos e Tecnologias do Produto
+                  Atributos e Tecnologias
                 </span>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Tecnologias (ex: UV 50+, Dry, Anti-pilling)</label>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Tecnologias</label>
                     <input type="text" value={formData.tecnologias} onChange={e => setFormData({...formData, tecnologias: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Conforto (ex: Toque macio e leve)</label>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Conforto</label>
                     <input type="text" value={formData.conforto_text} onChange={e => setFormData({...formData, conforto_text: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Versatilidade / Uso Recomendado (ex: Ideal para moda fitness)</label>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Versatilidade</label>
                     <input type="text" value={formData.versatil_text} onChange={e => setFormData({...formData, versatil_text: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
                   </div>
                 </div>
