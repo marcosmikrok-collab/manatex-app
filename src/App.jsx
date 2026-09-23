@@ -636,10 +636,10 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Preço Linear e Preço m² (Ajustado: Sem fundo/tom de azul, mantendo layout dos rendimentos) */}
+                      {/* Preço Linear e Preço m² (Ajustado: Rótulo alterado de "Preço Linear (por M)" para "Preço Linear") */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                         <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Preço Linear (por M)</span>
+                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Preço Linear</span>
                           <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM)}</strong>
                         </div>
                         <div>
@@ -651,7 +651,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Botão para Exportar PDF (Ajustado: Cor alterada para o verde Manatex) */}
+                  {/* Botão para Exportar PDF */}
                   <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
                     <button
                       onClick={() => handleExportPDF(p.id, p.nome)}
