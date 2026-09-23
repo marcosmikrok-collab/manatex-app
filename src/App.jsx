@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, UserCheck, ShieldAlert } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -32,6 +32,9 @@ export default function App() {
   const [globalSearchTerm, setGlobalSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
+
+  // Estado para armazenar utilizadores com cadastro pendente
+  const [pendingUsers, setPendingUsers] = useState([])
 
   // Mapeamento da cor/imagem selecionada por produto
   const [selectedColorsMap, setSelectedColorsMap] = useState({})
@@ -120,11 +123,49 @@ export default function App() {
     try {
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
       if (data) setProfile(data)
-      else setProfile({ id: userId, role: 'user', approved: true })
+      else setProfile({ id: userId, role: 'user', approved: false })
     } catch (err) {
       console.error(err)
     }
   }
+
+  // Buscar cadastros que aguardam aprovação do administrador
+  const fetchPendingUsers = async () => {
+    if (profile?.role !== 'admin') return
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('approved', false)
+      setPendingUsers(data || [])
+    } catch (err) {
+      console.error('Erro ao buscar perfis pendentes:', err)
+    }
+  }
+
+  // Aprovar um utilizador
+  const handleApproveUser = async (userId) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ approved: true })
+        .eq('id', userId)
+
+      if (error) {
+        alert('Erro ao aprovar utilizador: ' + error.message)
+      } else {
+        fetchPendingUsers()
+      }
+    } catch (err) {
+      console.error('Erro na aprovação:', err)
+    }
+  }
+
+  useEffect(() => {
+    if (session && profile?.role === 'admin') {
+      fetchPendingUsers()
+    }
+  }, [session, profile])
 
   const fetchProducts = async () => {
     if (!selectedBrand) return
@@ -353,6 +394,24 @@ export default function App() {
     )
   }
 
+  // TELA DE BLOQUEIO / AGUARDANDO APROVAÇÃO
+  if (profile && !profile.approved) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
+        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+          <ShieldAlert size={48} color="#d97706" style={{ marginBottom: '15px' }} />
+          <h2 style={{ margin: '0 0 10px 0', color: '#1e293b', fontSize: '20px' }}>Aprovação Pendente</h2>
+          <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.5', marginBottom: '20px' }}>
+            O seu cadastro foi efetuado com sucesso, mas ainda precisa ser aprovado por um administrador para aceder ao catálogo.
+          </p>
+          <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <LogOut size={16} /> Sair
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // TELA DE SELEÇÃO DE MARCA / BUSCA GLOBAL DE CARDS
   if (!selectedBrand) {
     return (
@@ -363,6 +422,25 @@ export default function App() {
             <LogOut size={15} /> Sair
           </button>
         </header>
+
+        {/* PAINEL DE APROVAÇÃO DE UTILIZADORES PARA O ADMINISTRADOR */}
+        {profile?.role === 'admin' && pendingUsers.length > 0 && (
+          <div style={{ width: '100%', maxWidth: '900px', backgroundColor: '#fffbe3', border: '1px solid #ffe58f', borderRadius: '10px', padding: '15px', marginBottom: '20px', boxSizing: 'border-box' }}>
+            <h3 style={{ margin: '0 0 10px 0', color: '#856404', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <UserCheck size={18} /> Solicitamentos de Cadastro Pendentes ({pendingUsers.length})
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {pendingUsers.map((u) => (
+                <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: '8px 12px', borderRadius: '6px', border: '1px solid #f0e6b5' }}>
+                  <span style={{ fontSize: '13px', color: '#334155' }}>{u.email || u.id}</span>
+                  <button onClick={() => handleApproveUser(u.id)} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+                    Aprovar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ width: '100%', maxWidth: '900px', marginBottom: '25px' }}>
           <div style={{ position: 'relative', width: '100%' }}>
