@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -44,9 +44,6 @@ export default function App() {
 
   // Mapeamento da cor/imagem selecionada por produto
   const [selectedColorsMap, setSelectedColorsMap] = useState({})
-
-  // Referências para exportação de PDF
-  const cardRefs = useRef({})
 
   const [formData, setFormData] = useState({
     nome: '', a_vista: '', a_prazo: '', valor_m: '', valor_m2: '',
@@ -223,6 +220,7 @@ export default function App() {
     }
   }, [session, profile, selectedBrand])
 
+  // FLUXO DE AUTENTICAÇÃO COM BLOQUEIO DE APROVAÇÃO
   const handleAuth = async (e) => {
     e.preventDefault()
     setAuthError('')
@@ -234,6 +232,7 @@ export default function App() {
         setAuthError(error.message)
       } else {
         if (data?.user) {
+          // Salva explicitamente no banco como approved: false
           const { error: profileError } = await supabase.from('profiles').upsert([
             { id: data.user.id, email: email, role: 'user', approved: false }
           ])
@@ -244,6 +243,8 @@ export default function App() {
         }
         setAuthSuccess('Conta criada com sucesso! Aguarde a aprovação do administrador.')
         setIsRegistering(false)
+        
+        // Garante o encerramento da sessão temporária até que a aprovação aconteça
         await supabase.auth.signOut()
       }
     } else {
@@ -255,23 +256,6 @@ export default function App() {
   const handleLogout = () => {
     setSelectedBrand(null)
     supabase.auth.signOut()
-  }
-
-  // Função para exportar Card individual para PDF
-  const handleExportPDF = (productId, productName) => {
-    const element = cardRefs.current[productId]
-    if (!element) return
-
-    import('html2pdf.js').then((html2pdf) => {
-      const opt = {
-        margin: 10,
-        filename: `${productName.toLowerCase().replace(/\s+/g, '_')}_ficha_tecnica.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }
-      html2pdf.default().set(opt).from(element).save()
-    })
   }
 
   const handleSaveProduct = async (e) => {
@@ -524,156 +508,99 @@ export default function App() {
               const currentImage = selectedColorObj?.imagem_url || p.imagem_url
               const selectedColorName = selectedColorObj?.nome_cor ? ` - ${selectedColorObj.nome_cor.toUpperCase()}` : ''
 
-              // Cálculo automático caso não exista no banco
-              const valorM = p.valor_m || (p.a_vista && p.rendimento_m ? (p.a_vista / p.rendimento_m) : null)
-              const valorM2 = p.valor_m2 || (p.a_vista && p.rendimento_m2 ? (p.a_vista / p.rendimento_m2) : null)
-
               return (
                 <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
-                  
-                  {/* Conteúdo Exportável para PDF */}
-                  <div ref={(el) => (cardRefs.current[p.id] = el)} style={{ backgroundColor: 'white', padding: '10px', borderRadius: '12px' }}>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <span style={{ backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                        {p.marca}
-                      </span>
-                    </div>
+                  <span style={{ position: 'absolute', top: '18px', right: '18px', backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                    {p.marca}
+                  </span>
 
-                    <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-                      <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', margin: '0 0 8px 0', color: '#0f172a', fontWeight: 'bold' }}>
-                        {p.nome?.toUpperCase()}{selectedColorName}
-                      </h2>
-                      <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>{p.descricao}</p>
-                    </div>
+                  <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                    <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', margin: '0 0 8px 0', color: '#0f172a', fontWeight: 'bold' }}>
+                      {p.nome?.toUpperCase()}{selectedColorName}
+                    </h2>
+                    <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>{p.descricao}</p>
+                  </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '15px 0' }}>
-                      {currentImage ? (
-                        <img src={currentImage} alt={p.nome} style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
-                      ) : (
-                        <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                          <ImageIcon size={28} />
-                        </div>
-                      )}
-
-                      {p.produto_cores && p.produto_cores.length > 0 && (
-                        <div style={{ marginTop: '15px', textAlign: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                            {p.produto_cores.map((cor) => (
-                              <button
-                                key={cor.id}
-                                onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor })}
-                                title={cor.nome_cor}
-                                style={{ 
-                                  width: '24px', 
-                                  height: '24px', 
-                                  borderRadius: '50%', 
-                                  backgroundColor: cor.codigo_hex || '#000', 
-                                  border: selectedColorObj?.id === cor.id ? '3px solid #059669' : '2px solid white', 
-                                  boxShadow: '0 0 0 1px #cbd5e1', 
-                                  cursor: 'pointer' 
-                                }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {(p.tecnologias || p.conforto_text || p.versatil_text) && (
-                      <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 15px', margin: '15px 0' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', marginBottom: '6px' }}>
-                          <Sparkles size={14} /> Características e Tecnologias
-                        </span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#14532d' }}>
-                          {p.tecnologias && <div><strong>Tecnologias:</strong> {p.tecnologias}</div>}
-                          {p.conforto_text && <div><strong>Conforto:</strong> {p.conforto_text}</div>}
-                          {p.versatil_text && <div><strong>Versatilidade:</strong> {p.versatil_text}</div>}
-                        </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '15px 0' }}>
+                    {currentImage ? (
+                      <img src={currentImage} alt={p.nome} style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
+                    ) : (
+                      <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                        <ImageIcon size={28} />
                       </div>
                     )}
 
-                    <div style={{ border: '1.5px solid #c8d0f8', borderRadius: '12px', padding: '10px 15px', margin: '15px 0', backgroundColor: '#fafafa' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
-                        <span style={{ color: '#64748b' }}>Composição</span>
-                        <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{p.composicao || '-'}</span>
+                    {p.produto_cores && p.produto_cores.length > 0 && (
+                      <div style={{ marginTop: '15px', textAlign: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          {p.produto_cores.map((cor) => (
+                            <button
+                              key={cor.id}
+                              onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor })}
+                              title={cor.nome_cor}
+                              style={{ 
+                                width: '24px', 
+                                height: '24px', 
+                                borderRadius: '50%', 
+                                backgroundColor: cor.codigo_hex || '#000', 
+                                border: selectedColorObj?.id === cor.id ? '3px solid #059669' : '2px solid white', 
+                                boxShadow: '0 0 0 1px #cbd5e1', 
+                                cursor: 'pointer' 
+                              }}
+                            />
+                          ))}
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
-                        <span style={{ color: '#64748b' }}>Gramatura</span>
-                        <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.gramatura, 'g')}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '12px' }}>
-                        <span style={{ color: '#64748b' }}>Largura</span>
-                        <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.largura, 'm')}</span>
+                    )}
+                  </div>
+
+                  {(p.tecnologias || p.conforto_text || p.versatil_text) && (
+                    <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 15px', margin: '15px 0' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                        <Sparkles size={14} /> Características e Tecnologias
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#14532d' }}>
+                        {p.tecnologias && <div><strong>Tecnologias:</strong> {p.tecnologias}</div>}
+                        {p.conforto_text && <div><strong>Conforto:</strong> {p.conforto_text}</div>}
+                        {p.versatil_text && <div><strong>Versatilidade:</strong> {p.versatil_text}</div>}
                       </div>
                     </div>
+                  )}
 
-                    {/* Bloco de Preços e Valores Lineares */}
-                    <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-                      
-                      {/* Preço À Vista e À Prazo Sem (+6%) */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
-                        <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Vista</span>
-                          <strong style={{ fontSize: '16px', color: '#059669' }}>{formatMoeda(p.a_vista)}</strong>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Prazo</span>
-                          <strong style={{ fontSize: '15px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</strong>
-                        </div>
-                      </div>
-
-                      {/* Rendimentos */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
-                        <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M/KG</span>
-                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</strong>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M²/KG</span>
-                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</strong>
-                        </div>
-                      </div>
-
-                      {/* Preço Linear e Preço m² */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                        <div style={{ backgroundColor: '#eff6ff', padding: '8px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                          <span style={{ fontSize: '10px', color: '#2563eb', fontWeight: 'bold', display: 'block' }}>Preço Linear (por M)</span>
-                          <strong style={{ fontSize: '13px', color: '#1e3a8a' }}>{formatMoeda(valorM)}</strong>
-                        </div>
-                        <div style={{ backgroundColor: '#eff6ff', padding: '8px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                          <span style={{ fontSize: '10px', color: '#2563eb', fontWeight: 'bold', display: 'block' }}>Preço por m²</span>
-                          <strong style={{ fontSize: '13px', color: '#1e3a8a' }}>{formatMoeda(valorM2)}</strong>
-                        </div>
-                      </div>
-
+                  <div style={{ border: '1.5px solid #c8d0f8', borderRadius: '12px', padding: '10px 15px', margin: '15px 0', backgroundColor: '#fafafa' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
+                      <span style={{ color: '#64748b' }}>Composição</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{p.composicao || '-'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
+                      <span style={{ color: '#64748b' }}>Gramatura</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.gramatura, 'g')}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '12px' }}>
+                      <span style={{ color: '#64748b' }}>Largura</span>
+                      <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.largura, 'm')}</span>
                     </div>
                   </div>
 
-                  {/* Botão para Exportar PDF do Item Pesquisado */}
-                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
-                    <button
-                      onClick={() => handleExportPDF(p.id, p.nome)}
-                      style={{ 
-                        backgroundColor: '#2563eb', 
-                        color: 'white', 
-                        border: 'none', 
-                        padding: '10px 20px', 
-                        borderRadius: '8px', 
-                        fontWeight: 'bold', 
-                        fontSize: '13px', 
-                        cursor: 'pointer', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '8px',
-                        boxShadow: '0 2px 5px rgba(37,99,235,0.3)'
-                      }}
-                    >
-                      <Download size={16} /> Exportar para PDF
-                    </button>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '10px', textAlign: 'center' }}>
+                    <div>
+                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>À Vista</span>
+                      <strong style={{ fontSize: '14px', color: '#059669' }}>{formatMoeda(p.a_vista)}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>À Prazo (+6%)</span>
+                      <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M/KG</span>
+                      <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</strong>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M²/KG</span>
+                      <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</strong>
+                    </div>
                   </div>
-
                 </div>
               )
             })}
@@ -800,7 +727,7 @@ export default function App() {
               <th style={{ padding: '10px' }}>Produto</th>
               <th style={{ padding: '10px' }}>Cores</th>
               <th style={{ padding: '10px' }}>À Vista</th>
-              <th style={{ padding: '10px' }}>À Prazo</th>
+              <th style={{ padding: '10px' }}>À Prazo (+6%)</th>
               <th style={{ padding: '10px' }}>Valor M</th>
               <th style={{ padding: '10px' }}>Valor M²</th>
               <th style={{ padding: '10px' }}>Rend. M</th>
