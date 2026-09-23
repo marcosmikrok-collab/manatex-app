@@ -33,6 +33,10 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [globalSearchTerm, setGlobalSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  
+  // Estado para controlar a visibilidade do Modal de Gestão de Utilizadores
+  const [isUsersModalOpen, setIsUsersModalOpen] = useState(false)
+
   const [editingId, setEditingId] = useState(null)
 
   // Lista de todos os perfis do sistema (para o painel de administração)
@@ -459,73 +463,26 @@ export default function App() {
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <header style={{ width: '100%', maxWidth: '900px', backgroundColor: '#059669', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h1 style={{ margin: 0, fontSize: '18px' }}>Catálogo Geral</h1>
-          <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <LogOut size={15} /> Sair
-          </button>
-        </header>
+          
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {/* BOTÃO DE GESTÃO DE ACESSOS (SÓ PARA ADMINS) */}
+            {profile?.role === 'admin' && (
+              <button 
+                onClick={() => {
+                  fetchAllProfiles()
+                  setIsUsersModalOpen(true)
+                }} 
+                style={{ backgroundColor: 'white', color: '#059669', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+              >
+                <Users size={16} /> Gestão de Acessos
+              </button>
+            )}
 
-        {/* --- PAINEL DE GESTÃO DE UTILIZADORES EXCLUSIVO DO ADMIN --- */}
-        {profile?.role === 'admin' && (
-          <div style={{ width: '100%', maxWidth: '900px', backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '15px', marginBottom: '20px', boxSizing: 'border-box', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <h3 style={{ margin: '0 0 15px 0', color: '#0f172a', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Users size={20} color="#059669" /> Gestão de Utilizadores e Permissões
-            </h3>
-
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
-                    <th style={{ padding: '8px' }}>E-mail</th>
-                    <th style={{ padding: '8px' }}>Estado</th>
-                    <th style={{ padding: '8px' }}>Permissão</th>
-                    <th style={{ padding: '8px', textAlign: 'center' }}>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allProfiles.map((u) => (
-                    <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '8px', fontWeight: '500' }}>{u.email || u.id}</td>
-                      <td style={{ padding: '8px' }}>
-                        {u.approved ? (
-                          <span style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>APROVADO</span>
-                        ) : (
-                          <span style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>PENDENTE</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '8px' }}>
-                        <select
-                          value={u.role || 'user'}
-                          onChange={(e) => handleChangeRole(u.id, e.target.value)}
-                          style={{ padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '11px', fontWeight: 'bold' }}
-                        >
-                          <option value="user">Utilizador</option>
-                          <option value="admin">Administrador</option>
-                        </select>
-                      </td>
-                      <td style={{ padding: '8px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                          <button
-                            onClick={() => handleToggleApproval(u.id, u.approved)}
-                            style={{ backgroundColor: u.approved ? '#e2e8f0' : '#059669', color: u.approved ? '#475569' : 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
-                          >
-                            {u.approved ? 'Bloquear' : 'Aprovar'}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProfile(u.id)}
-                            style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: 'none', padding: '4px 6px', borderRadius: '4px', cursor: 'pointer' }}
-                            title="Remover Utilizador"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px' }}>
+              <LogOut size={15} /> Sair
+            </button>
           </div>
-        )}
+        </header>
 
         <div style={{ width: '100%', maxWidth: '900px', marginBottom: '25px' }}>
           <div style={{ position: 'relative', width: '100%' }}>
@@ -653,6 +610,77 @@ export default function App() {
             <div onClick={() => setSelectedBrand('msports')} style={{ flex: '1 1 260px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
               <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '50px', marginBottom: '10px', backgroundColor: 'white', padding: '4px' }} />
               <p style={{ color: '#9ca3af', margin: 0 }}>Tabela de produtos MSports</p>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DE GESTÃO DE UTILIZADORES (ABRE AO CLICAR EM "GESTÃO DE ACESSOS") */}
+        {isUsersModalOpen && profile?.role === 'admin' && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+            <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                <h3 style={{ margin: 0, color: '#0f172a', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={22} color="#059669" /> Gestão de Utilizadores e Permissões
+                </h3>
+                <button onClick={() => setIsUsersModalOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
+                  <X size={22} />
+                </button>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
+                      <th style={{ padding: '10px' }}>E-mail</th>
+                      <th style={{ padding: '10px' }}>Estado</th>
+                      <th style={{ padding: '10px' }}>Permissão</th>
+                      <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allProfiles.map((u) => (
+                      <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '10px', fontWeight: '500' }}>{u.email || u.id}</td>
+                        <td style={{ padding: '10px' }}>
+                          {u.approved ? (
+                            <span style={{ backgroundColor: '#d1fae5', color: '#065f46', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>APROVADO</span>
+                          ) : (
+                            <span style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>PENDENTE</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          <select
+                            value={u.role || 'user'}
+                            onChange={(e) => handleChangeRole(u.id, e.target.value)}
+                            style={{ padding: '5px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: 'bold' }}
+                          >
+                            <option value="user">Utilizador</option>
+                            <option value="admin">Administrador</option>
+                          </select>
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            <button
+                              onClick={() => handleToggleApproval(u.id, u.approved)}
+                              style={{ backgroundColor: u.approved ? '#e2e8f0' : '#059669', color: u.approved ? '#475569' : 'white', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                            >
+                              {u.approved ? 'Bloquear' : 'Aprovar'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProfile(u.id)}
+                              style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: 'none', padding: '5px 8px', borderRadius: '4px', cursor: 'pointer' }}
+                              title="Remover Utilizador"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
