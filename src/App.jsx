@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, UserCheck, ShieldAlert, UserPlus, Users, Shield } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -135,7 +135,6 @@ export default function App() {
     }
   }
 
-  // Buscar todos os perfis de utilizadores para o painel do administrador
   const fetchAllProfiles = async () => {
     if (profile?.role !== 'admin') return
     try {
@@ -146,7 +145,6 @@ export default function App() {
     }
   }
 
-  // Aprovar ou desaprovar utilizador
   const handleToggleApproval = async (userId, currentApproved) => {
     try {
       const { error } = await supabase
@@ -161,7 +159,6 @@ export default function App() {
     }
   }
 
-  // Alterar permissão (Role: user / admin)
   const handleChangeRole = async (userId, newRole) => {
     try {
       const { error } = await supabase
@@ -176,7 +173,6 @@ export default function App() {
     }
   }
 
-  // Excluir conta do perfil
   const handleDeleteProfile = async (userId) => {
     if (confirm("Tem a certeza que pretende remover este utilizador do sistema?")) {
       try {
@@ -224,6 +220,7 @@ export default function App() {
     }
   }, [session, profile, selectedBrand])
 
+  // FLUXO DE AUTENTICAÇÃO COM BLOQUEIO DE APROVAÇÃO
   const handleAuth = async (e) => {
     e.preventDefault()
     setAuthError('')
@@ -235,12 +232,20 @@ export default function App() {
         setAuthError(error.message)
       } else {
         if (data?.user) {
-          await supabase.from('profiles').upsert([
+          // Salva explicitamente no banco como approved: false
+          const { error: profileError } = await supabase.from('profiles').upsert([
             { id: data.user.id, email: email, role: 'user', approved: false }
           ])
+
+          if (profileError) {
+            console.error('Erro ao salvar perfil:', profileError)
+          }
         }
         setAuthSuccess('Conta criada com sucesso! Aguarde a aprovação do administrador.')
         setIsRegistering(false)
+        
+        // Garante o encerramento da sessão temporária até que a aprovação aconteça
+        await supabase.auth.signOut()
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -465,7 +470,6 @@ export default function App() {
           <h1 style={{ margin: 0, fontSize: '18px' }}>Catálogo Geral</h1>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            {/* BOTÃO DE GESTÃO DE ACESSOS (SÓ PARA ADMINS) */}
             {profile?.role === 'admin' && (
               <button 
                 onClick={() => {
@@ -614,7 +618,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE GESTÃO DE UTILIZADORES (ABRE AO CLICAR EM "GESTÃO DE ACESSOS") */}
+        {/* MODAL DE GESTÃO DE UTILIZADORES */}
         {isUsersModalOpen && profile?.role === 'admin' && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
