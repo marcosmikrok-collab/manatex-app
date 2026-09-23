@@ -612,7 +612,7 @@ export default function App() {
                     {/* Bloco de Preços e Valores Lineares */}
                     <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
                       
-                      {/* Preço À Vista e À Prazo Sem (+6%) */}
+                      {/* Preço À Vista e À Prazo */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
                         <div>
                           <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Vista</span>
@@ -636,27 +636,27 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Preço Linear e Preço m² */}
+                      {/* Preço Linear e Preço m² (Ajustado: Sem fundo/tom de azul, mantendo layout dos rendimentos) */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                        <div style={{ backgroundColor: '#eff6ff', padding: '8px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                          <span style={{ fontSize: '10px', color: '#2563eb', fontWeight: 'bold', display: 'block' }}>Preço Linear (por M)</span>
-                          <strong style={{ fontSize: '13px', color: '#1e3a8a' }}>{formatMoeda(valorM)}</strong>
+                        <div>
+                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Preço Linear (por M)</span>
+                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM)}</strong>
                         </div>
-                        <div style={{ backgroundColor: '#eff6ff', padding: '8px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                          <span style={{ fontSize: '10px', color: '#2563eb', fontWeight: 'bold', display: 'block' }}>Preço por m²</span>
-                          <strong style={{ fontSize: '13px', color: '#1e3a8a' }}>{formatMoeda(valorM2)}</strong>
+                        <div>
+                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Preço por m²</span>
+                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM2)}</strong>
                         </div>
                       </div>
 
                     </div>
                   </div>
 
-                  {/* Botão para Exportar PDF do Item Pesquisado */}
+                  {/* Botão para Exportar PDF (Ajustado: Cor alterada para o verde Manatex) */}
                   <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
                     <button
                       onClick={() => handleExportPDF(p.id, p.nome)}
                       style={{ 
-                        backgroundColor: '#2563eb', 
+                        backgroundColor: '#059669', 
                         color: 'white', 
                         border: 'none', 
                         padding: '10px 20px', 
@@ -667,7 +667,7 @@ export default function App() {
                         display: 'flex', 
                         alignItems: 'center', 
                         gap: '8px',
-                        boxShadow: '0 2px 5px rgba(37,99,235,0.3)'
+                        boxShadow: '0 2px 5px rgba(5,150,105,0.3)'
                       }}
                     >
                       <Download size={16} /> Exportar para PDF
