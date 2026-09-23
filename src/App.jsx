@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, UserCheck, ShieldAlert } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, UserCheck, ShieldAlert, UserPlus } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -23,6 +23,8 @@ export default function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
+  const [authSuccess, setAuthSuccess] = useState('')
+  const [isRegistering, setIsRegistering] = useState(false) // Alterna entre Login e Registo
 
   const [selectedBrand, setSelectedBrand] = useState(null)
   const [products, setProducts] = useState([])
@@ -199,8 +201,28 @@ export default function App() {
   const handleAuth = async (e) => {
     e.preventDefault()
     setAuthError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setAuthError('E-mail ou palavra-passe incorretos.')
+    setAuthSuccess('')
+
+    if (isRegistering) {
+      // PROCESSO DE REGISTO/CRIAR CONTA
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      if (error) {
+        setAuthError(error.message)
+      } else {
+        if (data?.user) {
+          // Insere o perfil na tabela profiles aguardando aprovação
+          await supabase.from('profiles').upsert([
+            { id: data.user.id, email: email, role: 'user', approved: false }
+          ])
+        }
+        setAuthSuccess('Conta criada com sucesso! Aguarde a aprovação do administrador.')
+        setIsRegistering(false)
+      }
+    } else {
+      // PROCESSO DE LOGIN
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setAuthError('E-mail ou palavra-passe incorretos.')
+    }
   }
 
   const handleLogout = () => {
@@ -369,15 +391,21 @@ export default function App() {
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827'
 
+  // TELA DE AUTENTICAÇÃO (LOGIN / REGISTO)
   if (!session) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
         <form onSubmit={handleAuth} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
-            <Lock size={40} />
-            <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>Catálogo de Preços</h2>
+            {isRegistering ? <UserPlus size={40} /> : <Lock size={40} />}
+            <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>
+              {isRegistering ? 'Criar Nova Conta' : 'Catálogo de Preços'}
+            </h2>
           </div>
-          {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center' }}>{authError}</p>}
+
+          {authError && <p style={{ color: 'red', fontSize: '13px', textAlign: 'center', marginBottom: '10px' }}>{authError}</p>}
+          {authSuccess && <p style={{ color: '#059669', fontSize: '13px', textAlign: 'center', marginBottom: '10px', fontWeight: 'bold' }}>{authSuccess}</p>}
+
           <div style={{ marginBottom: '15px' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>E-mail</label>
             <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
@@ -386,9 +414,24 @@ export default function App() {
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Palavra-passe</label>
             <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
           </div>
-          <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-            Entrar
+
+          <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
+            {isRegistering ? 'Cadastrar' : 'Entrar'}
           </button>
+
+          <div style={{ textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegistering(!isRegistering)
+                setAuthError('')
+                setAuthSuccess('')
+              }}
+              style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              {isRegistering ? 'Já tem uma conta? Iniciar sessão' : 'Não tem conta? Criar cadastro'}
+            </button>
+          </div>
         </form>
       </div>
     )
@@ -579,7 +622,6 @@ export default function App() {
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
       
-      {/* CSS RESPONSIVO INJETADO PARA DAR SWITCH ENTRE CARTÕES E TABELA */}
       <style>{`
         .product-cards-mobile {
           display: flex;
@@ -613,7 +655,6 @@ export default function App() {
         )}
       </header>
 
-      {/* CAMPO DE PESQUISA DENTRO DA MARCA */}
       <div style={{ marginBottom: '15px', position: 'relative' }}>
         <Search size={18} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
         <input
@@ -625,12 +666,10 @@ export default function App() {
         />
       </div>
 
-      {/* VISUALIZAÇÃO EM CARTÕES (EXCLUSIVO PARA TELEMÓVEL / ECAN PEQUENO) */}
+      {/* VISUALIZAÇÃO EM CARTÕES (EXCLUSIVO PARA MOBILE) */}
       <div className="product-cards-mobile">
         {filteredProducts.map((p) => (
           <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0', position: 'relative' }}>
-            
-            {/* CABEÇALHO DO CARD */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 'bold' }}>{p.nome}</h3>
@@ -648,7 +687,6 @@ export default function App() {
               )}
             </div>
 
-            {/* CORES */}
             {p.produto_cores && p.produto_cores.length > 0 && (
               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '12px', alignItems: 'center' }}>
                 <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'bold', marginRight: '4px' }}>Cores:</span>
@@ -658,7 +696,6 @@ export default function App() {
               </div>
             )}
 
-            {/* PREÇOS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
               <div>
                 <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>À Vista</span>
@@ -678,7 +715,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* ESPECIFICAÇÕES TÉCNICAS */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', textAlign: 'center', fontSize: '11px', borderTop: '1px solid #f1f5f9', paddingTop: '8px', marginBottom: '10px' }}>
               <div>
                 <span style={{ fontSize: '9px', color: '#94a3b8', display: 'block' }}>Rend. M</span>
@@ -698,7 +734,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* TECNOLOGIAS */}
             {p.tecnologias && (
               <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px', fontSize: '11px', color: '#166534' }}>
                 <strong>Tecnologias:</strong> {p.tecnologias}
