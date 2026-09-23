@@ -234,12 +234,13 @@ export default function App() {
         setAuthError(error.message)
       } else {
         if (data?.user) {
+          // Garante explicitamente que approved é false ao criar o perfil
           const { error: profileError } = await supabase.from('profiles').upsert([
             { id: data.user.id, email: email, role: 'user', approved: false }
           ])
 
           if (profileError) {
-            console.error('Erro ao salvar perfil:', profileError)
+            console.error('Erro ao criar perfil:', profileError)
           }
         }
         setAuthSuccess('Conta criada com sucesso! Aguarde a aprovação do administrador.')
