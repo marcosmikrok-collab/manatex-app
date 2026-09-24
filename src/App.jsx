@@ -644,7 +644,7 @@ export default function App() {
                           <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM)}</strong>
                         </div>
                         <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Preço por m²</span>
+                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor por m² (à vista)</span>
                           <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM2)}</strong>
                         </div>
                       </div>
