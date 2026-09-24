@@ -640,7 +640,7 @@ export default function App() {
                       {/* Preço Linear e Preço m² (Ajustado: Rótulo alterado de "Preço Linear (por M)" para "Preço Linear") */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                         <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Preço Linear</span>
+                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor Linear (à vista)</span>
                           <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM)}</strong>
                         </div>
                         <div>
