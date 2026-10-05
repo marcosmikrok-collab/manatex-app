@@ -637,7 +637,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Preço Linear e Preço m² (Ajustado: Rótulo alterado de "Preço Linear (por M)" para "Preço Linear") */}
+                      {/* Preço Linear e Preço m² */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                         <div>
                           <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor Linear (à vista)</span>
