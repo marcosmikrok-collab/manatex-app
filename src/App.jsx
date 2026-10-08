@@ -1041,16 +1041,6 @@ export default function App() {
         </div>
       )}
     
-      {showUpdate && appUpdate && (
-        <div style={{ position: 'fixed', bottom: '20px', left: '20px', right: '20px', backgroundColor: 'white', padding: '18px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 9999, border: '2px solid #059669' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '17px', marginBottom: '8px' }}>Nova versão disponível!</div>
-          <div style={{ fontSize: '14px', marginBottom: '14px' }}>Versão atual: 1.0.0<br />Nova versão: {appUpdate.version}</div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => window.open(appUpdate.apkUrl, '_blank')} style={{ flex: 1, backgroundColor: '#059669', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Atualizar</button>
-            <button onClick={() => setShowUpdate(false)} style={{ padding: '10px 15px', backgroundColor: '#e5e7eb', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Depois</button>
-          </div>
-        </div>
-      )}
 </div>
   )
 }
