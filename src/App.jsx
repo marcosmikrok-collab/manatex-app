@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabaseClient'
+import { Filesystem, Directory } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download } from 'lucide-react'
 
 const formatMoeda = (valor) => {
@@ -259,21 +261,66 @@ export default function App() {
   }
 
   // Função para exportar Card individual para PDF
-  const handleExportPDF = (productId, productName) => {
+  const handleExportPDF = async (productId, productName) => {
     const element = cardRefs.current[productId]
-    if (!element) return
+  if (!element) return
 
-    import('html2pdf.js').then((html2pdf) => {
-      const opt = {
-        margin: 10,
-        filename: `${productName.toLowerCase().replace(/\s+/g, '_')}_dados_do_produto.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  try {
+    const { default: html2pdf } = await import('html2pdf.js')
+
+    const opt = {
+      margin: 10,
+      filename: `${productName.toLowerCase().replace(/\s+/g, '_')}_dados_do_produto.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }
+
+    // No navegador (Vercel), mantém o download normal
+    if (!window.Capacitor?.isNativePlatform?.()) {
+      await html2pdf().set(opt).from(element).save()
+      return
+    }
+
+    // No Android/iOS, gera o PDF como Blob
+    const pdfBlob = await html2pdf()
+      .set(opt)
+      .from(element)
+      .outputPdf('blob')
+
+    // Converte o PDF para Base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+
+      reader.onloadend = () => {
+        const result = reader.result
+        resolve(result.split(',')[1])
       }
-      html2pdf.default().set(opt).from(element).save()
+
+      reader.onerror = reject
+      reader.readAsDataURL(pdfBlob)
     })
+
+    // Salva temporariamente no dispositivo
+    const { uri } = await Filesystem.writeFile({
+      path: opt.filename,
+      data: base64,
+      directory: Directory.Cache
+    })
+
+    // Abre o compartilhamento do Android/iOS
+    await Share.share({
+      title: 'Exportar PDF',
+      text: opt.filename,
+      url: uri,
+      dialogTitle: 'Compartilhar PDF'
+    })
+
+  } catch (error) {
+    console.error('Erro ao gerar PDF:', error)
+    alert('Não foi possível gerar o PDF.')
   }
+}
 
   const handleSaveProduct = async (e) => {
     e.preventDefault()
