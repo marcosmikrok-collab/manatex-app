@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
@@ -19,31 +19,6 @@ const formatNumero = (valor, sufixo = '') => {
 }
 
 export default function App() {
-  const [appUpdate, setAppUpdate] = useState(null)
-  const [showUpdate, setShowUpdate] = useState(false)
-  useEffect(() => {
-    const verificarAtualizacao = async () => {
-      try {
-        const resposta = await fetch('/version.json', {
-          cache: 'no-store'
-        })
-
-        if (!resposta.ok) return
-
-        const dados = await resposta.json()
-        const versaoAtual = '1.0.0'
-
-        if (dados.version && dados.version !== versaoAtual) {
-          setAppUpdate(dados)
-          setShowUpdate(true)
-        }
-      } catch (error) {
-        console.log('Não foi possível verificar atualizações:', error)
-      }
-    }
-
-    verificarAtualizacao()
-  }, [])
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   
@@ -61,18 +36,18 @@ export default function App() {
   const [globalSearchTerm, setGlobalSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   
-  // Estado para controlar a visibilidade do Modal de GestÃ£o de Utilizadores
+  // Estado para controlar a visibilidade do Modal de Gestão de Utilizadores
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false)
 
   const [editingId, setEditingId] = useState(null)
 
-  // Lista de todos os perfis do sistema (para o painel de administraÃ§Ã£o)
+  // Lista de todos os perfis do sistema (para o painel de administração)
   const [allProfiles, setAllProfiles] = useState([])
 
   // Mapeamento da cor/imagem selecionada por produto
   const [selectedColorsMap, setSelectedColorsMap] = useState({})
 
-  // ReferÃªncias para exportaÃ§Ã£o de PDF
+  // Referências para exportação de PDF
   const cardRefs = useRef({})
 
   const [formData, setFormData] = useState({
@@ -196,7 +171,7 @@ export default function App() {
         .update({ role: newRole })
         .eq('id', userId)
 
-      if (error) alert('Erro ao alterar permissÃ£o: ' + error.message)
+      if (error) alert('Erro ao alterar permissão: ' + error.message)
       else fetchAllProfiles()
     } catch (err) {
       console.error(err)
@@ -261,7 +236,7 @@ export default function App() {
         setAuthError(error.message)
       } else {
         if (data?.user) {
-          // Garante explicitamente que approved Ã© false ao criar o perfil
+          // Garante explicitamente que approved é false ao criar o perfil
           const { error: profileError } = await supabase.from('profiles').upsert([
             { id: data.user.id, email: email, role: 'user', approved: false }
           ])
@@ -270,7 +245,7 @@ export default function App() {
             console.error('Erro ao criar perfil:', profileError)
           }
         }
-        setAuthSuccess('Conta criada com sucesso! Aguarde a aprovaÃ§Ã£o do administrador.')
+        setAuthSuccess('Conta criada com sucesso! Aguarde a aprovação do administrador.')
         setIsRegistering(false)
         await supabase.auth.signOut()
       }
@@ -285,7 +260,7 @@ export default function App() {
     supabase.auth.signOut()
   }
 
-  // FunÃ§Ã£o para exportar Card individual para PDF
+  // Função para exportar Card individual para PDF
   const handleExportPDF = async (productId, productName) => {
     const element = cardRefs.current[productId]
   if (!element) return
@@ -301,7 +276,7 @@ export default function App() {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }
 
-    // No navegador (Vercel), mantÃ©m o download normal
+    // No navegador (Vercel), mantém o download normal
     if (!window.Capacitor?.isNativePlatform?.()) {
       await html2pdf().set(opt).from(element).save()
       return
@@ -343,7 +318,7 @@ export default function App() {
 
   } catch (error) {
     console.error('Erro ao gerar PDF:', error)
-    alert('NÃ£o foi possÃ­vel gerar o PDF.')
+    alert('Não foi possível gerar o PDF.')
   }
 }
 
@@ -495,7 +470,7 @@ export default function App() {
           <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
             {isRegistering ? <UserPlus size={40} /> : <Lock size={40} />}
             <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>
-              {isRegistering ? 'Criar Nova Conta' : 'CatÃ¡logo de PreÃ§os'}
+              {isRegistering ? 'Criar Nova Conta' : 'Catálogo de Preços'}
             </h2>
           </div>
 
@@ -525,7 +500,7 @@ export default function App() {
               }}
               style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}
             >
-              {isRegistering ? 'JÃ¡ tem uma conta? Iniciar sessÃ£o' : 'NÃ£o tem conta? Criar cadastro'}
+              {isRegistering ? 'Já tem uma conta? Iniciar sessão' : 'Não tem conta? Criar cadastro'}
             </button>
           </div>
         </form>
@@ -533,15 +508,15 @@ export default function App() {
     )
   }
 
-  // TELA DE ESPERA DE APROVAÃ‡ÃƒO
+  // TELA DE ESPERA DE APROVAÇÃO
   if (profile && !profile.approved) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
         <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
           <ShieldAlert size={48} color="#d97706" style={{ marginBottom: '15px' }} />
-          <h2 style={{ margin: '0 0 10px 0', color: '#1e293b', fontSize: '20px' }}>AprovaÃ§Ã£o Pendente</h2>
+          <h2 style={{ margin: '0 0 10px 0', color: '#1e293b', fontSize: '20px' }}>Aprovação Pendente</h2>
           <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.5', marginBottom: '20px' }}>
-            O seu cadastro foi efetuado, mas aguarda a aprovaÃ§Ã£o de um administrador para aceder ao catÃ¡logo.
+            O seu cadastro foi efetuado, mas aguarda a aprovação de um administrador para aceder ao catálogo.
           </p>
           <button onClick={handleLogout} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <LogOut size={16} /> Sair
@@ -556,7 +531,7 @@ export default function App() {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <header style={{ width: '100%', maxWidth: '900px', backgroundColor: '#059669', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h1 style={{ margin: 0, fontSize: '18px' }}>CatÃ¡logo Geral</h1>
+          <h1 style={{ margin: 0, fontSize: '18px' }}>Catálogo Geral</h1>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             {profile?.role === 'admin' && (
@@ -567,7 +542,7 @@ export default function App() {
                 }} 
                 style={{ backgroundColor: 'white', color: '#059669', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
               >
-                <Users size={16} /> GestÃ£o de Acessos
+                <Users size={16} /> Gestão de Acessos
               </button>
             )}
 
@@ -597,14 +572,14 @@ export default function App() {
               const currentImage = selectedColorObj?.imagem_url || p.imagem_url
               const selectedColorName = selectedColorObj?.nome_cor ? ` - ${selectedColorObj.nome_cor.toUpperCase()}` : ''
 
-              // CÃ¡lculo automÃ¡tico caso nÃ£o exista no banco
+              // Cálculo automático caso não exista no banco
               const valorM = p.valor_m || (p.a_vista && p.rendimento_m ? (p.a_vista / p.rendimento_m) : null)
               const valorM2 = p.valor_m2 || (p.a_vista && p.rendimento_m2 ? (p.a_vista / p.rendimento_m2) : null)
 
               return (
                 <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
                   
-                  {/* ConteÃºdo ExportÃ¡vel para PDF */}
+                  {/* Conteúdo Exportável para PDF */}
                   <div ref={(el) => (cardRefs.current[p.id] = el)} style={{ backgroundColor: 'white', padding: '10px', borderRadius: '12px' }}>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -631,7 +606,7 @@ export default function App() {
 
                       {p.produto_cores && p.produto_cores.length > 0 && (
                         <div style={{ marginTop: '15px', textAlign: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÃVEIS:</span>
+                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
                           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                             {p.produto_cores.map((cor) => (
                               <button
@@ -657,7 +632,7 @@ export default function App() {
                     {(p.tecnologias || p.conforto_text || p.versatil_text) && (
                       <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 15px', margin: '15px 0' }}>
                         <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', marginBottom: '6px' }}>
-                          <Sparkles size={14} /> CaracterÃ­sticas e Tecnologias
+                          <Sparkles size={14} /> Características e Tecnologias
                         </span>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#14532d' }}>
                           {p.tecnologias && <div><strong>Tecnologias:</strong> {p.tecnologias}</div>}
@@ -669,7 +644,7 @@ export default function App() {
 
                     <div style={{ border: '1.5px solid #c8d0f8', borderRadius: '12px', padding: '10px 15px', margin: '15px 0', backgroundColor: '#fafafa' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
-                        <span style={{ color: '#64748b' }}>ComposiÃ§Ã£o</span>
+                        <span style={{ color: '#64748b' }}>Composição</span>
                         <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{p.composicao || '-'}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
@@ -682,17 +657,17 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Bloco de PreÃ§os e Valores Lineares */}
+                    {/* Bloco de Preços e Valores Lineares */}
                     <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
                       
-                      {/* PreÃ§o Ã€ Vista e Ã€ Prazo */}
+                      {/* Preço À Vista e À Prazo */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
                         <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Ã€ Vista</span>
+                          <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Vista</span>
                           <strong style={{ fontSize: '16px', color: '#059669' }}>{formatMoeda(p.a_vista)}</strong>
                         </div>
                         <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>Ã€ Prazo</span>
+                          <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Prazo</span>
                           <strong style={{ fontSize: '15px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</strong>
                         </div>
                       </div>
@@ -704,19 +679,19 @@ export default function App() {
                           <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</strong>
                         </div>
                         <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. MÂ²/KG</span>
-                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'mÂ²')}</strong>
+                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M²/KG</span>
+                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</strong>
                         </div>
                       </div>
 
-                      {/* PreÃ§o Linear e PreÃ§o mÂ² */}
+                      {/* Preço Linear e Preço m² */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                         <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor Linear (Ã  vista)</span>
+                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor Linear (à vista)</span>
                           <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM)}</strong>
                         </div>
                         <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor por mÂ² (Ã  vista)</span>
+                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor por m² (à vista)</span>
                           <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM2)}</strong>
                         </div>
                       </div>
@@ -724,7 +699,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* BotÃ£o para Exportar PDF */}
+                  {/* Botão para Exportar PDF */}
                   <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
                     <button
                       onClick={() => handleExportPDF(p.id, p.nome)}
@@ -764,14 +739,14 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE GESTÃƒO DE UTILIZADORES */}
+        {/* MODAL DE GESTÃO DE UTILIZADORES */}
         {isUsersModalOpen && profile?.role === 'admin' && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
                 <h3 style={{ margin: 0, color: '#0f172a', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Users size={22} color="#059669" /> GestÃ£o de Utilizadores e PermissÃµes
+                  <Users size={22} color="#059669" /> Gestão de Utilizadores e Permissões
                 </h3>
                 <button onClick={() => setIsUsersModalOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
                   <X size={22} />
@@ -784,8 +759,8 @@ export default function App() {
                     <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
                       <th style={{ padding: '10px' }}>E-mail</th>
                       <th style={{ padding: '10px' }}>Estado</th>
-                      <th style={{ padding: '10px' }}>PermissÃ£o</th>
-                      <th style={{ padding: '10px', textAlign: 'center' }}>AÃ§Ãµes</th>
+                      <th style={{ padding: '10px' }}>Permissão</th>
+                      <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -859,7 +834,7 @@ export default function App() {
         <Search size={18} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
         <input
           type="text"
-          placeholder="Filtrar por tecido ou composiÃ§Ã£o..."
+          placeholder="Filtrar por tecido ou composição..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: '100%', padding: '8px 12px 8px 38px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }}
@@ -872,17 +847,17 @@ export default function App() {
             <tr style={{ backgroundColor: brandColor, color: 'white', textAlign: 'left' }}>
               <th style={{ padding: '10px' }}>Produto</th>
               <th style={{ padding: '10px' }}>Cores</th>
-              <th style={{ padding: '10px' }}>Ã€ Vista</th>
-              <th style={{ padding: '10px' }}>Ã€ Prazo</th>
+              <th style={{ padding: '10px' }}>À Vista</th>
+              <th style={{ padding: '10px' }}>À Prazo</th>
               <th style={{ padding: '10px' }}>Valor M</th>
-              <th style={{ padding: '10px' }}>Valor MÂ²</th>
+              <th style={{ padding: '10px' }}>Valor M²</th>
               <th style={{ padding: '10px' }}>Rend. M</th>
-              <th style={{ padding: '10px' }}>Rend. MÂ²</th>
+              <th style={{ padding: '10px' }}>Rend. M²</th>
               <th style={{ padding: '10px' }}>Gramatura</th>
               <th style={{ padding: '10px' }}>Largura</th>
-              <th style={{ padding: '10px' }}>ComposiÃ§Ã£o</th>
+              <th style={{ padding: '10px' }}>Composição</th>
               <th style={{ padding: '10px' }}>Tecnologias</th>
-              {profile?.role === 'admin' && <th style={{ padding: '10px', textAlign: 'center' }}>AÃ§Ãµes</th>}
+              {profile?.role === 'admin' && <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>}
             </tr>
           </thead>
           <tbody>
@@ -901,7 +876,7 @@ export default function App() {
                 <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m)}</td>
                 <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m2)}</td>
                 <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</td>
-                <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'mÂ²')}</td>
+                <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
                 <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.gramatura, 'g')}</td>
                 <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.largura, 'm')}</td>
                 <td style={{ padding: '10px', color: '#64748b' }}>{p.composicao || '-'}</td>
@@ -922,7 +897,7 @@ export default function App() {
         </table>
       </div>
 
-      {/* MODAL DE EDIÃ‡ÃƒO DE PRODUTOS */}
+      {/* MODAL DE EDIÇÃO DE PRODUTOS */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -943,7 +918,7 @@ export default function App() {
                   <input type="text" value={formData.imagem_url} onChange={e => setFormData({...formData, imagem_url: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="https://..." />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Ã€ Vista (R$)</label>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>À Vista (R$)</label>
                   <input type="text" value={formData.a_vista} onChange={handleAVistaChange} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
@@ -954,7 +929,7 @@ export default function App() {
                   <input type="text" value={formData.rendimento_m} onChange={handleRendimentoMChange} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Rendimento MÂ² (mÂ²)</label>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Rendimento M² (m²)</label>
                   <input type="text" value={formData.rendimento_m2} onChange={handleRendimentoM2Change} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
                 </div>
               </div>
@@ -971,8 +946,8 @@ export default function App() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>ComposiÃ§Ã£o</label>
-                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="100% PoliÃ©ster" />
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Composição</label>
+                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="100% Poliéster" />
               </div>
 
               <div style={{ border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px', backgroundColor: '#f0fdf4' }}>
@@ -1042,19 +1017,6 @@ export default function App() {
           </div>
         </div>
       )}
-      {showUpdate && appUpdate && (
-        <div style={{ position: 'fixed', bottom: '20px', left: '20px', right: '20px', backgroundColor: 'white', padding: '18px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 9999, border: '2px solid #059669' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '17px', marginBottom: '8px' }}>Nova versão disponível!</div>
-          <div style={{ fontSize: '14px', marginBottom: '14px' }}>Versão atual: 1.0.0<br />Nova versão: {appUpdate.version}</div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => window.open(appUpdate.apkUrl, '_blank')} style={{ flex: 1, backgroundColor: '#059669', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Atualizar</button>
-            <button onClick={() => setShowUpdate(false)} style={{ padding: '10px 15px', backgroundColor: '#e5e7eb', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Depois</button>
-          </div>
-        </div>
-      )}    </div>
+    </div>
   )
 }
-
-
-
-
