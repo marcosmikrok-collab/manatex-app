@@ -74,7 +74,7 @@ export default function App() {
   const cardRefs = useRef({})
 
   const [formData, setFormData] = useState({
-    nome: '', a_vista: '', a_prazo: '', valor_m: '', valor_m2: '',
+    nome: '', a_vista: '', a_prazo: '', atacado_cartao_debito: '', atacado_cartao_credito: '', valor_m: '', valor_m2: '',
     largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
     descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
   })
@@ -99,12 +99,20 @@ export default function App() {
     const rendM2 = parseInputValue(rendM2Val)
 
     let aPrazo = ''
+    let atacadoCartaoDebito = ''
+    let atacadoCartaoCredito = ''
     let valorM = ''
     let valorM2 = ''
 
     if (aVista !== null && !isNaN(aVista)) {
       const calcPrazo = aVista * 1.06
       aPrazo = calcPrazo.toFixed(2).replace('.', ',')
+
+      const calcDebito = aVista * 1.03
+      atacadoCartaoDebito = calcDebito.toFixed(2).replace('.', ',')
+
+      const calcCredito = calcPrazo * 1.03
+      atacadoCartaoCredito = calcCredito.toFixed(2).replace('.', ',')
 
       if (rendM && rendM > 0) {
         const calcValorM = aVista / rendM
@@ -117,13 +125,21 @@ export default function App() {
       }
     }
 
-    return { aPrazo, valorM, valorM2 }
+    return { aPrazo, atacadoCartaoDebito, atacadoCartaoCredito, valorM, valorM2 }
   }
 
   const handleAVistaChange = (e) => {
     const novoAVista = e.target.value
-    const { aPrazo, valorM, valorM2 } = recalcularValores(novoAVista, formData.rendimento_m, formData.rendimento_m2)
-    setFormData((prev) => ({ ...prev, a_vista: novoAVista, a_prazo: aPrazo, valor_m: valorM, valor_m2: valorM2 }))
+    const { aPrazo, atacadoCartaoDebito, atacadoCartaoCredito, valorM, valorM2 } = recalcularValores(novoAVista, formData.rendimento_m, formData.rendimento_m2)
+    setFormData((prev) => ({ 
+      ...prev, 
+      a_vista: novoAVista, 
+      a_prazo: aPrazo, 
+      atacado_cartao_debito: atacadoCartaoDebito, 
+      atacado_cartao_credito: atacadoCartaoCredito, 
+      valor_m: valorM, 
+      valor_m2: valorM2 
+    }))
   }
 
   const handleRendimentoMChange = (e) => {
@@ -259,7 +275,6 @@ export default function App() {
         setAuthError(error.message)
       } else {
         if (data?.user) {
-          // Garante explicitamente que approved é false ao criar o perfil
           const { error: profileError } = await supabase.from('profiles').upsert([
             { id: data.user.id, email: email, role: 'user', approved: false }
           ])
@@ -283,77 +298,71 @@ export default function App() {
     supabase.auth.signOut()
   }
 
-  // Função para exportar Card individual para PDF
   const handleExportPDF = async (productId, productName) => {
     const element = cardRefs.current[productId]
-  if (!element) return
+    if (!element) return
 
-  try {
-    const { default: html2pdf } = await import('html2pdf.js')
+    try {
+      const { default: html2pdf } = await import('html2pdf.js')
 
-    const opt = {
-      margin: 10,
-      filename: `${productName.toLowerCase().replace(/\s+/g, '_')}_dados_do_produto.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }
-
-    // No navegador (Vercel), mantém o download normal
-    if (!window.Capacitor?.isNativePlatform?.()) {
-      await html2pdf().set(opt).from(element).save()
-      return
-    }
-
-    // No Android/iOS, gera o PDF como Blob
-    const pdfBlob = await html2pdf()
-      .set(opt)
-      .from(element)
-      .outputPdf('blob')
-
-    // Converte o PDF para Base64
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-
-      reader.onloadend = () => {
-        const result = reader.result
-        resolve(result.split(',')[1])
+      const opt = {
+        margin: 10,
+        filename: `${productName.toLowerCase().replace(/\s+/g, '_')}_dados_do_produto.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       }
 
-      reader.onerror = reject
-      reader.readAsDataURL(pdfBlob)
-    })
+      if (!window.Capacitor?.isNativePlatform?.()) {
+        await html2pdf().set(opt).from(element).save()
+        return
+      }
 
-    // Salva temporariamente no dispositivo
-    const { uri } = await Filesystem.writeFile({
-      path: opt.filename,
-      data: base64,
-      directory: Directory.Cache
-    })
+      const pdfBlob = await html2pdf()
+        .set(opt)
+        .from(element)
+        .outputPdf('blob')
 
-    // Abre o compartilhamento do Android/iOS
-    await Share.share({
-      title: 'Exportar PDF',
-      text: opt.filename,
-      url: uri,
-      dialogTitle: 'Compartilhar PDF'
-    })
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const result = reader.result
+          resolve(result.split(',')[1])
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(pdfBlob)
+      })
 
-  } catch (error) {
-    console.error('Erro ao gerar PDF:', error)
-    alert('Não foi possível gerar o PDF.')
+      const { uri } = await Filesystem.writeFile({
+        path: opt.filename,
+        data: base64,
+        directory: Directory.Cache
+      })
+
+      await Share.share({
+        title: 'Exportar PDF',
+        text: opt.filename,
+        url: uri,
+        dialogTitle: 'Compartilhar PDF'
+      })
+
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error)
+      alert('Não foi possível gerar o PDF.')
+    }
   }
-}
 
   const handleSaveProduct = async (e) => {
     e.preventDefault()
-    const { aPrazo, valorM, valorM2 } = recalcularValores(formData.a_vista, formData.rendimento_m, formData.rendimento_m2)
+    const { aPrazo, atacadoCartaoDebito, atacadoCartaoCredito, valorM, valorM2 } = recalcularValores(formData.a_vista, formData.rendimento_m, formData.rendimento_m2)
 
     const payload = {
       nome: formData.nome,
       marca: selectedBrand || 'manatex',
       a_vista: parseInputValue(formData.a_vista),
       a_prazo: parseInputValue(formData.a_prazo || aPrazo),
+      atacado_cartao_debito: parseInputValue(formData.atacado_cartao_debito || atacadoCartaoDebito),
+      atacado_cartao_credito: parseInputValue(formData.atacado_cartao_credito || atacadoCartaoCredito),
       valor_m: parseInputValue(formData.valor_m || valorM),
       valor_m2: parseInputValue(formData.valor_m2 || valorM2),
       largura: parseInputValue(formData.largura),
@@ -426,12 +435,14 @@ export default function App() {
       const aVistaStr = product.a_vista !== null && product.a_vista !== undefined ? String(product.a_vista).replace('.', ',') : ''
       const rendMStr = product.rendimento_m !== null && product.rendimento_m !== undefined ? String(product.rendimento_m).replace('.', ',') : ''
       const rendM2Str = product.rendimento_m2 !== null && product.rendimento_m2 !== undefined ? String(product.rendimento_m2).replace('.', ',') : ''
-      const { aPrazo, valorM, valorM2 } = recalcularValores(aVistaStr, rendMStr, rendM2Str)
+      const { aPrazo, atacadoCartaoDebito, atacadoCartaoCredito, valorM, valorM2 } = recalcularValores(aVistaStr, rendMStr, rendM2Str)
 
       setFormData({
         nome: product.nome || '',
         a_vista: aVistaStr,
         a_prazo: product.a_prazo !== null && product.a_prazo !== undefined ? String(product.a_prazo).replace('.', ',') : aPrazo,
+        atacado_cartao_debito: product.atacado_cartao_debito !== null && product.atacado_cartao_debito !== undefined ? String(product.atacado_cartao_debito).replace('.', ',') : atacadoCartaoDebito,
+        atacado_cartao_credito: product.atacado_cartao_credito !== null && product.atacado_cartao_credito !== undefined ? String(product.atacado_cartao_credito).replace('.', ',') : atacadoCartaoCredito,
         valor_m: product.valor_m !== null && product.valor_m !== undefined ? String(product.valor_m).replace('.', ',') : valorM,
         valor_m2: product.valor_m2 !== null && product.valor_m2 !== undefined ? String(product.valor_m2).replace('.', ',') : valorM2,
         largura: product.largura !== null && product.largura !== undefined ? String(product.largura).replace('.', ',') : '',
@@ -449,7 +460,7 @@ export default function App() {
     } else {
       setEditingId(null)
       setFormData({ 
-        nome: '', a_vista: '', a_prazo: '', valor_m: '', valor_m2: '', 
+        nome: '', a_vista: '', a_prazo: '', atacado_cartao_debito: '', atacado_cartao_credito: '', valor_m: '', valor_m2: '', 
         largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
         descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
       })
@@ -484,6 +495,8 @@ export default function App() {
 
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827'
+
+  const canViewStorePrices = profile?.role === 'admin' || profile?.role === 'loja'
 
   // LOGIN / REGISTO
   if (!session) {
@@ -595,14 +608,14 @@ export default function App() {
               const currentImage = selectedColorObj?.imagem_url || p.imagem_url
               const selectedColorName = selectedColorObj?.nome_cor ? ` - ${selectedColorObj.nome_cor.toUpperCase()}` : ''
 
-              // Cálculo automático caso não exista no banco
               const valorM = p.valor_m || (p.a_vista && p.rendimento_m ? (p.a_vista / p.rendimento_m) : null)
               const valorM2 = p.valor_m2 || (p.a_vista && p.rendimento_m2 ? (p.a_vista / p.rendimento_m2) : null)
+              const atacadoDebito = p.atacado_cartao_debito || (p.a_vista ? p.a_vista * 1.03 : null)
+              const atacadoCredito = p.atacado_cartao_credito || (p.a_prazo ? p.a_prazo * 1.03 : null)
 
               return (
                 <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
                   
-                  {/* Conteúdo Exportável para PDF */}
                   <div ref={(el) => (cardRefs.current[p.id] = el)} style={{ backgroundColor: 'white', padding: '10px', borderRadius: '12px' }}>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -680,10 +693,8 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Bloco de Preços e Valores Lineares */}
                     <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
                       
-                      {/* Preço À Vista e À Prazo */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
                         <div>
                           <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Vista</span>
@@ -695,7 +706,19 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Rendimentos */}
+                      {canViewStorePrices && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#fdf4ff', padding: '8px', borderRadius: '8px' }}>
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Débito</span>
+                            <strong style={{ fontSize: '15px', color: '#6b21a8' }}>{formatMoeda(atacadoDebito)}</strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Crédito</span>
+                            <strong style={{ fontSize: '15px', color: '#6b21a8' }}>{formatMoeda(atacadoCredito)}</strong>
+                          </div>
+                        </div>
+                      )}
+
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
                         <div>
                           <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M/KG</span>
@@ -707,7 +730,6 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Preço Linear e Preço m² */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
                         <div>
                           <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor Linear (à vista)</span>
@@ -722,7 +744,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Botão para Exportar PDF */}
                   <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
                     <button
                       onClick={() => handleExportPDF(p.id, p.nome)}
@@ -804,6 +825,7 @@ export default function App() {
                             style={{ padding: '5px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: 'bold' }}
                           >
                             <option value="user">Utilizador</option>
+                            <option value="loja">Loja</option>
                             <option value="admin">Administrador</option>
                           </select>
                         </td>
@@ -872,6 +894,12 @@ export default function App() {
               <th style={{ padding: '10px' }}>Cores</th>
               <th style={{ padding: '10px' }}>À Vista</th>
               <th style={{ padding: '10px' }}>À Prazo</th>
+              {canViewStorePrices && (
+                <>
+                  <th style={{ padding: '10px', color: '#f3e8ff' }}>Atac. Débito</th>
+                  <th style={{ padding: '10px', color: '#f3e8ff' }}>Atac. Crédito</th>
+                </>
+              )}
               <th style={{ padding: '10px' }}>Valor M</th>
               <th style={{ padding: '10px' }}>Valor M²</th>
               <th style={{ padding: '10px' }}>Rend. M</th>
@@ -884,38 +912,49 @@ export default function App() {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map((p, idx) => (
-              <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                <td style={{ padding: '10px', fontWeight: 'bold', color: '#0f172a' }}>{p.nome}</td>
-                <td style={{ padding: '10px' }}>
-                  <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', maxWidth: '60px' }}>
-                    {p.produto_cores?.map((c) => (
-                      <span key={c.id} title={c.nome_cor} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: c.codigo_hex, border: '1px solid #cbd5e1', display: 'inline-block' }} />
-                    ))}
-                  </div>
-                </td>
-                <td style={{ padding: '10px', color: '#059669', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
-                <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</td>
-                <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m)}</td>
-                <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m2)}</td>
-                <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</td>
-                <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
-                <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.gramatura, 'g')}</td>
-                <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.largura, 'm')}</td>
-                <td style={{ padding: '10px', color: '#64748b' }}>{p.composicao || '-'}</td>
-                <td style={{ padding: '10px', color: '#047857', fontWeight: 'bold' }}>{p.tecnologias || '-'}</td>
-                {profile?.role === 'admin' && (
-                  <td style={{ padding: '10px', textAlign: 'center' }}>
-                    <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', padding: '2px' }}>
-                      <Edit2 size={14} />
-                    </button>
-                    <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626', marginLeft: '6px', padding: '2px' }}>
-                      <Trash2 size={14} />
-                    </button>
+            {filteredProducts.map((p, idx) => {
+              const atacadoDebito = p.atacado_cartao_debito || (p.a_vista ? p.a_vista * 1.03 : null)
+              const atacadoCredito = p.atacado_cartao_credito || (p.a_prazo ? p.a_prazo * 1.03 : null)
+
+              return (
+                <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#0f172a' }}>{p.nome}</td>
+                  <td style={{ padding: '10px' }}>
+                    <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', maxWidth: '60px' }}>
+                      {p.produto_cores?.map((c) => (
+                        <span key={c.id} title={c.nome_cor} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: c.codigo_hex, border: '1px solid #cbd5e1', display: 'inline-block' }} />
+                      ))}
+                    </div>
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td style={{ padding: '10px', color: '#059669', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</td>
+                  {canViewStorePrices && (
+                    <>
+                      <td style={{ padding: '10px', color: '#7e22ce', fontWeight: 'bold' }}>{formatMoeda(atacadoDebito)}</td>
+                      <td style={{ padding: '10px', color: '#7e22ce', fontWeight: 'bold' }}>{formatMoeda(atacadoCredito)}</td>
+                    </>
+                  )}
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m)}</td>
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m2)}</td>
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</td>
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.gramatura, 'g')}</td>
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.largura, 'm')}</td>
+                  <td style={{ padding: '10px', color: '#64748b' }}>{p.composicao || '-'}</td>
+                  <td style={{ padding: '10px', color: '#047857', fontWeight: 'bold' }}>{p.tecnologias || '-'}</td>
+                  {profile?.role === 'admin' && (
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                      <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', padding: '2px' }}>
+                        <Edit2 size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626', marginLeft: '6px', padding: '2px' }}>
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -1041,6 +1080,6 @@ export default function App() {
         </div>
       )}
     
-</div>
+    </div>
   )
 }
