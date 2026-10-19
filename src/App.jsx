@@ -59,22 +59,18 @@ export default function App() {
   const [globalSearchTerm, setGlobalSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   
-  // Estado para controlar a visibilidade do Modal de Gestão de Utilizadores
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false)
-
   const [editingId, setEditingId] = useState(null)
-
-  // Lista de todos os perfis do sistema (para o painel de administração)
   const [allProfiles, setAllProfiles] = useState([])
-
-  // Mapeamento da cor/imagem selecionada por produto
   const [selectedColorsMap, setSelectedColorsMap] = useState({})
-
-  // Referências para exportação de PDF
   const cardRefs = useRef({})
 
   const [formData, setFormData] = useState({
-    nome: '', a_vista: '', a_prazo: '', atacado_cartao_debito: '', atacado_cartao_credito: '', valor_m: '', valor_m2: '',
+    nome: '', a_vista: '', a_prazo: '', 
+    atacado_cartao_debito: '', atacado_cartao_credito: '', 
+    varejo_avista_debito: '', varejo_prazo_credito: '',
+    meia_peca_avista_debito: '', meia_peca_prazo_credito: '',
+    valor_m: '', valor_m2: '',
     largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
     descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
   })
@@ -101,6 +97,10 @@ export default function App() {
     let aPrazo = ''
     let atacadoCartaoDebito = ''
     let atacadoCartaoCredito = ''
+    let varejoAvistaDebito = ''
+    let varejoPrazoCredito = ''
+    let meiaPecaAvistaDebito = ''
+    let meiaPecaPrazoCredito = ''
     let valorM = ''
     let valorM2 = ''
 
@@ -108,37 +108,57 @@ export default function App() {
       const calcPrazo = aVista * 1.06
       aPrazo = calcPrazo.toFixed(2).replace('.', ',')
 
-      const calcDebito = aVista * 1.03
-      atacadoCartaoDebito = calcDebito.toFixed(2).replace('.', ',')
+      // Atacado Cartão
+      atacadoCartaoDebito = (aVista * 1.03).toFixed(2).replace('.', ',')
+      atacadoCartaoCredito = (calcPrazo * 1.03).toFixed(2).replace('.', ',')
 
-      const calcCredito = calcPrazo * 1.03
-      atacadoCartaoCredito = calcCredito.toFixed(2).replace('.', ',')
+      // Varejo
+      const calcVarejoAvista = aVista * 1.30
+      varejoAvistaDebito = calcVarejoAvista.toFixed(2).replace('.', ',')
+      varejoPrazoCredito = (calcVarejoAvista * 1.06).toFixed(2).replace('.', ',')
+
+      // Meia Peça
+      const calcMeiaAvista = aVista * 1.15
+      meiaPecaAvistaDebito = calcMeiaAvista.toFixed(2).replace('.', ',')
+      meiaPecaPrazoCredito = (calcMeiaAvista * 1.06).toFixed(2).replace('.', ',')
 
       if (rendM && rendM > 0) {
-        const calcValorM = aVista / rendM
-        valorM = calcValorM.toFixed(2).replace('.', ',')
+        valorM = (aVista / rendM).toFixed(2).replace('.', ',')
       }
 
       if (rendM2 && rendM2 > 0) {
-        const calcValorM2 = aVista / rendM2
-        valorM2 = calcValorM2.toFixed(2).replace('.', ',')
+        valorM2 = (aVista / rendM2).toFixed(2).replace('.', ',')
       }
     }
 
-    return { aPrazo, atacadoCartaoDebito, atacadoCartaoCredito, valorM, valorM2 }
+    return { 
+      aPrazo, 
+      atacadoCartaoDebito, 
+      atacadoCartaoCredito, 
+      varejoAvistaDebito, 
+      varejoPrazoCredito,
+      meiaPecaAvistaDebito,
+      meiaPecaPrazoCredito,
+      valorM, 
+      valorM2 
+    }
   }
 
   const handleAVistaChange = (e) => {
     const novoAVista = e.target.value
-    const { aPrazo, atacadoCartaoDebito, atacadoCartaoCredito, valorM, valorM2 } = recalcularValores(novoAVista, formData.rendimento_m, formData.rendimento_m2)
+    const calc = recalcularValores(novoAVista, formData.rendimento_m, formData.rendimento_m2)
     setFormData((prev) => ({ 
       ...prev, 
       a_vista: novoAVista, 
-      a_prazo: aPrazo, 
-      atacado_cartao_debito: atacadoCartaoDebito, 
-      atacado_cartao_credito: atacadoCartaoCredito, 
-      valor_m: valorM, 
-      valor_m2: valorM2 
+      a_prazo: calc.aPrazo, 
+      atacado_cartao_debito: calc.atacadoCartaoDebito, 
+      atacado_cartao_credito: calc.atacadoCartaoCredito, 
+      varejo_avista_debito: calc.varejoAvistaDebito,
+      varejo_prazo_credito: calc.varejoPrazoCredito,
+      meia_peca_avista_debito: calc.meiaPecaAvistaDebito,
+      meia_peca_prazo_credito: calc.meiaPecaPrazoCredito,
+      valor_m: calc.valorM, 
+      valor_m2: calc.valorM2 
     }))
   }
 
@@ -354,17 +374,21 @@ export default function App() {
 
   const handleSaveProduct = async (e) => {
     e.preventDefault()
-    const { aPrazo, atacadoCartaoDebito, atacadoCartaoCredito, valorM, valorM2 } = recalcularValores(formData.a_vista, formData.rendimento_m, formData.rendimento_m2)
+    const calc = recalcularValores(formData.a_vista, formData.rendimento_m, formData.rendimento_m2)
 
     const payload = {
       nome: formData.nome,
       marca: selectedBrand || 'manatex',
       a_vista: parseInputValue(formData.a_vista),
-      a_prazo: parseInputValue(formData.a_prazo || aPrazo),
-      atacado_cartao_debito: parseInputValue(formData.atacado_cartao_debito || atacadoCartaoDebito),
-      atacado_cartao_credito: parseInputValue(formData.atacado_cartao_credito || atacadoCartaoCredito),
-      valor_m: parseInputValue(formData.valor_m || valorM),
-      valor_m2: parseInputValue(formData.valor_m2 || valorM2),
+      a_prazo: parseInputValue(formData.a_prazo || calc.aPrazo),
+      atacado_cartao_debito: parseInputValue(formData.atacado_cartao_debito || calc.atacadoCartaoDebito),
+      atacado_cartao_credito: parseInputValue(formData.atacado_cartao_credito || calc.atacadoCartaoCredito),
+      varejo_avista_debito: parseInputValue(formData.varejo_avista_debito || calc.varejoAvistaDebito),
+      varejo_prazo_credito: parseInputValue(formData.varejo_prazo_credito || calc.varejoPrazoCredito),
+      meia_peca_avista_debito: parseInputValue(formData.meia_peca_avista_debito || calc.meiaPecaAvistaDebito),
+      meia_peca_prazo_credito: parseInputValue(formData.meia_peca_prazo_credito || calc.meiaPecaPrazoCredito),
+      valor_m: parseInputValue(formData.valor_m || calc.valorM),
+      valor_m2: parseInputValue(formData.valor_m2 || calc.valorM2),
       largura: parseInputValue(formData.largura),
       gramatura: parseInputValue(formData.gramatura),
       rendimento_m: parseInputValue(formData.rendimento_m),
@@ -435,16 +459,20 @@ export default function App() {
       const aVistaStr = product.a_vista !== null && product.a_vista !== undefined ? String(product.a_vista).replace('.', ',') : ''
       const rendMStr = product.rendimento_m !== null && product.rendimento_m !== undefined ? String(product.rendimento_m).replace('.', ',') : ''
       const rendM2Str = product.rendimento_m2 !== null && product.rendimento_m2 !== undefined ? String(product.rendimento_m2).replace('.', ',') : ''
-      const { aPrazo, atacadoCartaoDebito, atacadoCartaoCredito, valorM, valorM2 } = recalcularValores(aVistaStr, rendMStr, rendM2Str)
+      const calc = recalcularValores(aVistaStr, rendMStr, rendM2Str)
 
       setFormData({
         nome: product.nome || '',
         a_vista: aVistaStr,
-        a_prazo: product.a_prazo !== null && product.a_prazo !== undefined ? String(product.a_prazo).replace('.', ',') : aPrazo,
-        atacado_cartao_debito: product.atacado_cartao_debito !== null && product.atacado_cartao_debito !== undefined ? String(product.atacado_cartao_debito).replace('.', ',') : atacadoCartaoDebito,
-        atacado_cartao_credito: product.atacado_cartao_credito !== null && product.atacado_cartao_credito !== undefined ? String(product.atacado_cartao_credito).replace('.', ',') : atacadoCartaoCredito,
-        valor_m: product.valor_m !== null && product.valor_m !== undefined ? String(product.valor_m).replace('.', ',') : valorM,
-        valor_m2: product.valor_m2 !== null && product.valor_m2 !== undefined ? String(product.valor_m2).replace('.', ',') : valorM2,
+        a_prazo: product.a_prazo !== null && product.a_prazo !== undefined ? String(product.a_prazo).replace('.', ',') : calc.aPrazo,
+        atacado_cartao_debito: product.atacado_cartao_debito !== null && product.atacado_cartao_debito !== undefined ? String(product.atacado_cartao_debito).replace('.', ',') : calc.atacadoCartaoDebito,
+        atacado_cartao_credito: product.atacado_cartao_credito !== null && product.atacado_cartao_credito !== undefined ? String(product.atacado_cartao_credito).replace('.', ',') : calc.atacadoCartaoCredito,
+        varejo_avista_debito: product.varejo_avista_debito !== null && product.varejo_avista_debito !== undefined ? String(product.varejo_avista_debito).replace('.', ',') : calc.varejoAvistaDebito,
+        varejo_prazo_credito: product.varejo_prazo_credito !== null && product.varejo_prazo_credito !== undefined ? String(product.varejo_prazo_credito).replace('.', ',') : calc.varejoPrazoCredito,
+        meia_peca_avista_debito: product.meia_peca_avista_debito !== null && product.meia_peca_avista_debito !== undefined ? String(product.meia_peca_avista_debito).replace('.', ',') : calc.meiaPecaAvistaDebito,
+        meia_peca_prazo_credito: product.meia_peca_prazo_credito !== null && product.meia_peca_prazo_credito !== undefined ? String(product.meia_peca_prazo_credito).replace('.', ',') : calc.meiaPecaPrazoCredito,
+        valor_m: product.valor_m !== null && product.valor_m !== undefined ? String(product.valor_m).replace('.', ',') : calc.valorM,
+        valor_m2: product.valor_m2 !== null && product.valor_m2 !== undefined ? String(product.valor_m2).replace('.', ',') : calc.valorM2,
         largura: product.largura !== null && product.largura !== undefined ? String(product.largura).replace('.', ',') : '',
         gramatura: product.gramatura !== null && product.gramatura !== undefined ? String(product.gramatura).replace('.', ',') : '',
         rendimento_m: rendMStr,
@@ -460,7 +488,11 @@ export default function App() {
     } else {
       setEditingId(null)
       setFormData({ 
-        nome: '', a_vista: '', a_prazo: '', atacado_cartao_debito: '', atacado_cartao_credito: '', valor_m: '', valor_m2: '', 
+        nome: '', a_vista: '', a_prazo: '', 
+        atacado_cartao_debito: '', atacado_cartao_credito: '', 
+        varejo_avista_debito: '', varejo_prazo_credito: '',
+        meia_peca_avista_debito: '', meia_peca_prazo_credito: '',
+        valor_m: '', valor_m2: '', 
         largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
         descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
       })
@@ -610,8 +642,13 @@ export default function App() {
 
               const valorM = p.valor_m || (p.a_vista && p.rendimento_m ? (p.a_vista / p.rendimento_m) : null)
               const valorM2 = p.valor_m2 || (p.a_vista && p.rendimento_m2 ? (p.a_vista / p.rendimento_m2) : null)
+              
               const atacadoDebito = p.atacado_cartao_debito || (p.a_vista ? p.a_vista * 1.03 : null)
               const atacadoCredito = p.atacado_cartao_credito || (p.a_prazo ? p.a_prazo * 1.03 : null)
+              const varejoAvista = p.varejo_avista_debito || (p.a_vista ? p.a_vista * 1.30 : null)
+              const varejoPrazo = p.varejo_prazo_credito || (varejoAvista ? varejoAvista * 1.06 : null)
+              const meiaAvista = p.meia_peca_avista_debito || (p.a_vista ? p.a_vista * 1.15 : null)
+              const meiaPrazo = p.meia_peca_prazo_credito || (meiaAvista ? meiaAvista * 1.06 : null)
 
               return (
                 <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
@@ -707,16 +744,40 @@ export default function App() {
                       </div>
 
                       {canViewStorePrices && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#fdf4ff', padding: '8px', borderRadius: '8px' }}>
-                          <div>
-                            <span style={{ fontSize: '11px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Débito</span>
-                            <strong style={{ fontSize: '15px', color: '#6b21a8' }}>{formatMoeda(atacadoDebito)}</strong>
+                        <>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#fdf4ff', padding: '8px', borderRadius: '8px' }}>
+                            <div>
+                              <span style={{ fontSize: '10px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Débito</span>
+                              <strong style={{ fontSize: '14px', color: '#6b21a8' }}>{formatMoeda(atacadoDebito)}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '10px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Crédito</span>
+                              <strong style={{ fontSize: '14px', color: '#6b21a8' }}>{formatMoeda(atacadoCredito)}</strong>
+                            </div>
                           </div>
-                          <div>
-                            <span style={{ fontSize: '11px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Crédito</span>
-                            <strong style={{ fontSize: '15px', color: '#6b21a8' }}>{formatMoeda(atacadoCredito)}</strong>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#fff7ed', padding: '8px', borderRadius: '8px' }}>
+                            <div>
+                              <span style={{ fontSize: '10px', color: '#c2410c', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Varejo À Vista/Débito</span>
+                              <strong style={{ fontSize: '14px', color: '#9a3412' }}>{formatMoeda(varejoAvista)}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '10px', color: '#c2410c', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Varejo Prazo/Crédito</span>
+                              <strong style={{ fontSize: '14px', color: '#9a3412' }}>{formatMoeda(varejoPrazo)}</strong>
+                            </div>
                           </div>
-                        </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#eff6ff', padding: '8px', borderRadius: '8px' }}>
+                            <div>
+                              <span style={{ fontSize: '10px', color: '#1d4ed8', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Meia Peça À Vista/Débito</span>
+                              <strong style={{ fontSize: '14px', color: '#1e40af' }}>{formatMoeda(meiaAvista)}</strong>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '10px', color: '#1d4ed8', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Meia Peça Prazo/Crédito</span>
+                              <strong style={{ fontSize: '14px', color: '#1e40af' }}>{formatMoeda(meiaPrazo)}</strong>
+                            </div>
+                          </div>
+                        </>
                       )}
 
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
@@ -898,6 +959,10 @@ export default function App() {
                 <>
                   <th style={{ padding: '10px', color: '#f3e8ff' }}>Atac. Débito</th>
                   <th style={{ padding: '10px', color: '#f3e8ff' }}>Atac. Crédito</th>
+                  <th style={{ padding: '10px', color: '#ffedd5' }}>Varejo À Vista</th>
+                  <th style={{ padding: '10px', color: '#ffedd5' }}>Varejo Prazo</th>
+                  <th style={{ padding: '10px', color: '#dbeafe' }}>Meia Peça À Vista</th>
+                  <th style={{ padding: '10px', color: '#dbeafe' }}>Meia Peça Prazo</th>
                 </>
               )}
               <th style={{ padding: '10px' }}>Valor M</th>
@@ -915,6 +980,10 @@ export default function App() {
             {filteredProducts.map((p, idx) => {
               const atacadoDebito = p.atacado_cartao_debito || (p.a_vista ? p.a_vista * 1.03 : null)
               const atacadoCredito = p.atacado_cartao_credito || (p.a_prazo ? p.a_prazo * 1.03 : null)
+              const varejoAvista = p.varejo_avista_debito || (p.a_vista ? p.a_vista * 1.30 : null)
+              const varejoPrazo = p.varejo_prazo_credito || (varejoAvista ? varejoAvista * 1.06 : null)
+              const meiaAvista = p.meia_peca_avista_debito || (p.a_vista ? p.a_vista * 1.15 : null)
+              const meiaPrazo = p.meia_peca_prazo_credito || (meiaAvista ? meiaAvista * 1.06 : null)
 
               return (
                 <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
@@ -932,6 +1001,10 @@ export default function App() {
                     <>
                       <td style={{ padding: '10px', color: '#7e22ce', fontWeight: 'bold' }}>{formatMoeda(atacadoDebito)}</td>
                       <td style={{ padding: '10px', color: '#7e22ce', fontWeight: 'bold' }}>{formatMoeda(atacadoCredito)}</td>
+                      <td style={{ padding: '10px', color: '#c2410c', fontWeight: 'bold' }}>{formatMoeda(varejoAvista)}</td>
+                      <td style={{ padding: '10px', color: '#c2410c', fontWeight: 'bold' }}>{formatMoeda(varejoPrazo)}</td>
+                      <td style={{ padding: '10px', color: '#1d4ed8', fontWeight: 'bold' }}>{formatMoeda(meiaAvista)}</td>
+                      <td style={{ padding: '10px', color: '#1d4ed8', fontWeight: 'bold' }}>{formatMoeda(meiaPrazo)}</td>
                     </>
                   )}
                   <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m)}</td>
@@ -982,6 +1055,39 @@ export default function App() {
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>À Vista (R$)</label>
                   <input type="text" value={formData.a_vista} onChange={handleAVistaChange} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
+                </div>
+              </div>
+
+              {/* CAMPOS EDITÁVEIS DOS NOVOS PREÇOS CALCULADOS */}
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', backgroundColor: '#f8fafc' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '8px' }}>
+                  Preços Calculados (Ajuste manual opcional)
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Atacado Débito (R$)</label>
+                    <input type="text" value={formData.atacado_cartao_debito} onChange={e => setFormData({...formData, atacado_cartao_debito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Atacado Crédito (R$)</label>
+                    <input type="text" value={formData.atacado_cartao_credito} onChange={e => setFormData({...formData, atacado_cartao_credito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Varejo À Vista/Débito (R$)</label>
+                    <input type="text" value={formData.varejo_avista_debito} onChange={e => setFormData({...formData, varejo_avista_debito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Varejo Prazo/Crédito (R$)</label>
+                    <input type="text" value={formData.varejo_prazo_credito} onChange={e => setFormData({...formData, varejo_prazo_credito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Meia Peça À Vista/Débito (R$)</label>
+                    <input type="text" value={formData.meia_peca_avista_debito} onChange={e => setFormData({...formData, meia_peca_avista_debito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Meia Peça Prazo/Crédito (R$)</label>
+                    <input type="text" value={formData.meia_peca_prazo_credito} onChange={e => setFormData({...formData, meia_peca_prazo_credito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
                 </div>
               </div>
 
