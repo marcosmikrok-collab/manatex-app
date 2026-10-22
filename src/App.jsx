@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download, WifiOff } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download, WifiOff, FileText } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -29,27 +29,6 @@ export default function App() {
 
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
-
-    const verificarAtualizacao = async () => {
-      try {
-        const resposta = await fetch('/version.json', { cache: 'no-store' })
-        if (!resposta.ok) return
-
-        const dados = await resposta.json()
-        const versaoAtual = '1.0.0'
-
-        if (dados.version && dados.version !== versaoAtual) {
-          setAppUpdate(dados)
-          setShowUpdate(true)
-        }
-      } catch (error) {
-        console.log('Não foi possível verificar atualizações:', error)
-      }
-    }
-
-    if (navigator.onLine) {
-      verificarAtualizacao()
-    }
 
     return () => {
       window.removeEventListener('online', handleOnline)
@@ -78,6 +57,7 @@ export default function App() {
   const [editingId, setEditingId] = useState(null)
   const [allProfiles, setAllProfiles] = useState([])
   const [selectedColorsMap, setSelectedColorsMap] = useState({})
+  const multiCardRef = useRef(null)
   const cardRefs = useRef({})
 
   const [formData, setFormData] = useState({
@@ -204,22 +184,17 @@ export default function App() {
   const fetchUserProfile = async (userId) => {
     try {
       const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
-      if (error) throw error
-      
       if (data) {
         setProfile(data)
-        // Salva o perfil no cache local para uso offline
         localStorage.setItem('cache_user_profile', JSON.stringify(data))
       } else {
         setProfile({ id: userId, role: 'user', approved: false })
       }
     } catch (err) {
-      console.log('Sem internet, a carregar perfil do cache local...')
       const savedProfile = localStorage.getItem('cache_user_profile')
       if (savedProfile) {
         setProfile(JSON.parse(savedProfile))
       } else {
-        // Fallback caso não haja cache salvo
         setProfile({ id: userId, role: 'user', approved: false })
       }
     }
@@ -298,7 +273,6 @@ export default function App() {
         localStorage.setItem(`cache_products_${selectedBrand}`, JSON.stringify(data))
       }
     } catch (err) {
-      console.log('Sem conexão. Carregando marca do cache local...')
       const savedBrandProducts = localStorage.getItem(`cache_products_${selectedBrand}`)
       if (savedBrandProducts) {
         setProducts(JSON.parse(savedBrandProducts))
@@ -321,7 +295,6 @@ export default function App() {
         localStorage.setItem('cache_all_products', JSON.stringify(data))
       }
     } catch (err) {
-      console.log('Sem conexão. Carregando catálogo geral do cache local...')
       const savedProducts = localStorage.getItem('cache_all_products')
       if (savedProducts) {
         setAllProducts(JSON.parse(savedProducts))
@@ -341,12 +314,10 @@ export default function App() {
     setAuthError('')
     setAuthSuccess('')
 
-    // Tratamento para Login Offline
     if (isOffline) {
       const savedProfile = localStorage.getItem('cache_user_profile')
       if (savedProfile) {
         const cached = JSON.parse(savedProfile)
-        // Se o e-mail digitado for o mesmo do cache guardado
         if (cached.email?.toLowerCase() === email.toLowerCase()) {
           setProfile(cached)
           setSession({ user: { id: cached.id, email: cached.email } })
@@ -363,13 +334,9 @@ export default function App() {
         setAuthError(error.message)
       } else {
         if (data?.user) {
-          const { error: profileError } = await supabase.from('profiles').upsert([
+          await supabase.from('profiles').upsert([
             { id: data.user.id, email: email, role: 'user', approved: false }
           ])
-
-          if (profileError) {
-            console.error('Erro ao criar perfil:', profileError)
-          }
         }
         setAuthSuccess('Conta criada com sucesso! Aguarde a aprovação do administrador.')
         setIsRegistering(false)
@@ -386,6 +353,7 @@ export default function App() {
     supabase.auth.signOut()
   }
 
+  // Função para exportar um PDF individual
   const handleExportPDF = async (productId, productName) => {
     const element = cardRefs.current[productId]
     if (!element) return
@@ -406,17 +374,10 @@ export default function App() {
         return
       }
 
-      const pdfBlob = await html2pdf()
-        .set(opt)
-        .from(element)
-        .outputPdf('blob')
-
+      const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob')
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader()
-        reader.onloadend = () => {
-          const result = reader.result
-          resolve(result.split(',')[1])
-        }
+        reader.onloadend = () => resolve(reader.result.split(',')[1])
         reader.onerror = reject
         reader.readAsDataURL(pdfBlob)
       })
@@ -437,6 +398,54 @@ export default function App() {
     } catch (error) {
       console.error('Erro ao gerar PDF:', error)
       alert('Não foi possível gerar o PDF.')
+    }
+  }
+
+  // Função para exportar MÚLTIPLOS produtos filtrados em um ÚNICO PDF
+  const handleExportMultiPDF = async () => {
+    const element = multiCardRef.current
+    if (!element) return
+
+    try {
+      const { default: html2pdf } = await import('html2pdf.js')
+
+      const opt = {
+        margin: 10,
+        filename: `catalogo_produtos_selecionados.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }
+
+      if (!window.Capacitor?.isNativePlatform?.()) {
+        await html2pdf().set(opt).from(element).save()
+        return
+      }
+
+      const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob')
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result.split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(pdfBlob)
+      })
+
+      const { uri } = await Filesystem.writeFile({
+        path: opt.filename,
+        data: base64,
+        directory: Directory.Cache
+      })
+
+      await Share.share({
+        title: 'Exportar PDF Múltiplo',
+        text: opt.filename,
+        url: uri,
+        dialogTitle: 'Compartilhar PDF'
+      })
+
+    } catch (error) {
+      console.error('Erro ao gerar PDF múltiplo:', error)
+      alert('Não foi possível gerar o PDF combinado.')
     }
   }
 
@@ -593,29 +602,34 @@ export default function App() {
     setFormCores(newCores)
   }
 
-  const filteredProducts = products.filter(p =>
-    p.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.composicao?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // --- LÓGICA DE BUSCA MÚLTIPLA (Suporta vírgula ex: Active, Aerodry, Cotton) ---
+  const filtrarProdutosPorTermos = (listaProdutos, termoBusca) => {
+    if (!termoBusca.trim()) return []
+    // Separa os termos pela vírgula
+    const termos = termoBusca.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
+    if (termos.length === 0) return []
 
-  const filteredGlobalProducts = allProducts.filter(p =>
-    p.nome?.toLowerCase().includes(globalSearchTerm.toLowerCase()) ||
-    p.composicao?.toLowerCase().includes(globalSearchTerm.toLowerCase())
-  )
+    return listaProdutos.filter(p => {
+      const nomeP = p.nome?.toLowerCase() || ''
+      const compP = p.composicao?.toLowerCase() || ''
+      // Retorna verdadeiro se o produto corresponder a QUALQUER um dos termos digitados
+      return termos.some(termo => nomeP.includes(termo) || compP.includes(termo))
+    })
+  }
+
+  const filteredGlobalProducts = filtrarProdutosPorTermos(allProducts, globalSearchTerm)
 
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827'
 
   const canViewStorePrices = profile?.role === 'admin' || profile?.role === 'loja'
 
-  // BANNER DE AVISO OFFLINE
   const OfflineBanner = () => isOffline ? (
     <div style={{ backgroundColor: '#f59e0b', color: 'white', padding: '6px 12px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
       <WifiOff size={16} /> Modo Offline — Exibindo dados em cache local
     </div>
   ) : null
 
-  // LOGIN / REGISTO
   if (!session) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
@@ -662,7 +676,6 @@ export default function App() {
     )
   }
 
-  // TELA DE ESPERA DE APROVAÇÃO
   if (profile && !profile.approved) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
@@ -681,7 +694,6 @@ export default function App() {
     )
   }
 
-  // PAINEL PRINCIPAL
   if (!selectedBrand) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -713,7 +725,7 @@ export default function App() {
             <Search size={20} style={{ position: 'absolute', left: '15px', top: '14px', color: '#64748b' }} />
             <input
               type="text"
-              placeholder="Digite o nome do produto ou tecido para buscar..."
+              placeholder="Busque um ou mais produtos separados por vírgula (Ex: Active, Aerodry)..."
               value={globalSearchTerm}
               onChange={(e) => setGlobalSearchTerm(e.target.value)}
               style={{ width: '100%', padding: '12px 40px 12px 45px', borderRadius: '10px', border: '2px solid #059669', outline: 'none', boxSizing: 'border-box', fontSize: '15px' }}
@@ -723,201 +735,231 @@ export default function App() {
 
         {globalSearchTerm ? (
           <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {filteredGlobalProducts.map((p) => {
-              const selectedColorObj = selectedColorsMap[p.id]
-              const currentImage = selectedColorObj?.imagem_url || p.imagem_url
-              const selectedColorName = selectedColorObj?.nome_cor ? ` - ${selectedColorObj.nome_cor.toUpperCase()}` : ''
+            
+            {/* BOTÃO PARA EXPORTAR TODOS OS RESULTADOS EM UM SÓ PDF */}
+            {filteredGlobalProducts.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px' }}>
+                <button
+                  onClick={handleExportMultiPDF}
+                  style={{ 
+                    backgroundColor: '#1e40af', 
+                    color: 'white', 
+                    border: 'none', 
+                    padding: '10px 18px', 
+                    borderRadius: '8px', 
+                    fontWeight: 'bold', 
+                    fontSize: '13px', 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    boxShadow: '0 2px 5px rgba(30,64,175,0.3)'
+                  }}
+                >
+                  <FileText size={16} /> Exportar Todos em 1 Só PDF ({filteredGlobalProducts.length})
+                </button>
+              </div>
+            )}
 
-              const valorM = p.valor_m || (p.a_vista && p.rendimento_m ? (p.a_vista / p.rendimento_m) : null)
-              const valorM2 = p.valor_m2 || (p.a_vista && p.rendimento_m2 ? (p.a_vista / p.rendimento_m2) : null)
-              
-              const atacadoDebito = p.atacado_cartao_debito || (p.a_vista ? p.a_vista * 1.03 : null)
-              const atacadoCredito = p.atacado_cartao_credito || (p.a_prazo ? p.a_prazo * 1.03 : null)
-              const varejoAvista = p.varejo_avista_debito || (p.a_vista ? p.a_vista * 1.30 : null)
-              const varejoPrazo = p.varejo_prazo_credito || (varejoAvista ? varejoAvista * 1.06 : null)
-              const meiaAvista = p.meia_peca_avista_debito || (p.a_vista ? p.a_vista * 1.15 : null)
-              const meiaPrazo = p.meia_peca_prazo_credito || (meiaAvista ? meiaAvista * 1.06 : null)
+            {/* ELEMENTO OCULTO / COMPLETO ENVOLVENDO TODOS PARA O PDF ÚNICO */}
+            <div ref={multiCardRef} style={{ display: 'flex', flexDirection: 'column', gap: '20px', backgroundColor: '#f8fafc' }}>
+              {filteredGlobalProducts.map((p) => {
+                const selectedColorObj = selectedColorsMap[p.id]
+                const currentImage = selectedColorObj?.imagem_url || p.imagem_url
+                const selectedColorName = selectedColorObj?.nome_cor ? ` - ${selectedColorObj.nome_cor.toUpperCase()}` : ''
 
-              return (
-                <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
-                  
-                  <div ref={(el) => (cardRefs.current[p.id] = el)} style={{ backgroundColor: 'white', padding: '10px', borderRadius: '12px' }}>
+                const valorM = p.valor_m || (p.a_vista && p.rendimento_m ? (p.a_vista / p.rendimento_m) : null)
+                const valorM2 = p.valor_m2 || (p.a_vista && p.rendimento_m2 ? (p.a_vista / p.rendimento_m2) : null)
+                
+                const atacadoDebito = p.atacado_cartao_debito || (p.a_vista ? p.a_vista * 1.03 : null)
+                const atacadoCredito = p.atacado_cartao_credito || (p.a_prazo ? p.a_prazo * 1.03 : null)
+                const varejoAvista = p.varejo_avista_debito || (p.a_vista ? p.a_vista * 1.30 : null)
+                const varejoPrazo = p.varejo_prazo_credito || (varejoAvista ? varejoAvista * 1.06 : null)
+                const meiaAvista = p.meia_peca_avista_debito || (p.a_vista ? p.a_vista * 1.15 : null)
+                const meiaPrazo = p.meia_peca_prazo_credito || (meiaAvista ? meiaAvista * 1.06 : null)
+
+                return (
+                  <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative', pageBreakAfter: 'always' }}>
                     
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <span style={{ backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                        {p.marca}
-                      </span>
-                    </div>
-
-                    <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-                      <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', margin: '0 0 8px 0', color: '#0f172a', fontWeight: 'bold' }}>
-                        {p.nome?.toUpperCase()}{selectedColorName}
-                      </h2>
-                      <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>{p.descricao}</p>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '15px 0' }}>
-                      {currentImage ? (
-                        <img src={currentImage} alt={p.nome} style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
-                      ) : (
-                        <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                          <ImageIcon size={28} />
-                        </div>
-                      )}
-
-                      {p.produto_cores && p.produto_cores.length > 0 && (
-                        <div style={{ marginTop: '15px', textAlign: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                            {p.produto_cores.map((cor) => (
-                              <button
-                                key={cor.id}
-                                onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor })}
-                                title={cor.nome_cor}
-                                style={{ 
-                                  width: '24px', 
-                                  height: '24px', 
-                                  borderRadius: '50%', 
-                                  backgroundColor: cor.codigo_hex || '#000', 
-                                  border: selectedColorObj?.id === cor.id ? '3px solid #059669' : '2px solid white', 
-                                  boxShadow: '0 0 0 1px #cbd5e1', 
-                                  cursor: 'pointer' 
-                                }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {(p.tecnologias || p.conforto_text || p.versatil_text) && (
-                      <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 15px', margin: '15px 0' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', marginBottom: '6px' }}>
-                          <Sparkles size={14} /> Características e Tecnologias
-                        </span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#14532d' }}>
-                          {p.tecnologias && <div><strong>Tecnologias:</strong> {p.tecnologias}</div>}
-                          {p.conforto_text && <div><strong>Conforto:</strong> {p.conforto_text}</div>}
-                          {p.versatil_text && <div><strong>Versatilidade:</strong> {p.versatil_text}</div>}
-                        </div>
-                      </div>
-                    )}
-
-                    <div style={{ border: '1.5px solid #c8d0f8', borderRadius: '12px', padding: '10px 15px', margin: '15px 0', backgroundColor: '#fafafa' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
-                        <span style={{ color: '#64748b' }}>Composição</span>
-                        <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{p.composicao || '-'}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
-                        <span style={{ color: '#64748b' }}>Gramatura</span>
-                        <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.gramatura, 'g')}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '12px' }}>
-                        <span style={{ color: '#64748b' }}>Largura</span>
-                        <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.largura, 'm')}</span>
-                      </div>
-                    </div>
-
-                    <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                    <div ref={(el) => (cardRefs.current[p.id] = el)} style={{ backgroundColor: 'white', padding: '10px', borderRadius: '12px' }}>
                       
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
-                        <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Vista</span>
-                          <strong style={{ fontSize: '16px', color: '#059669' }}>{formatMoeda(p.a_vista)}</strong>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Prazo</span>
-                          <strong style={{ fontSize: '15px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</strong>
-                        </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ backgroundColor: p.marca === 'manatex' ? '#d1fae5' : '#f3f4f6', color: p.marca === 'manatex' ? '#065f46' : '#111827', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                          {p.marca}
+                        </span>
                       </div>
 
-                      {canViewStorePrices && (
-                        <>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#fdf4ff', padding: '8px', borderRadius: '8px' }}>
-                            <div>
-                              <span style={{ fontSize: '10px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Débito</span>
-                              <strong style={{ fontSize: '14px', color: '#6b21a8' }}>{formatMoeda(atacadoDebito)}</strong>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: '10px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Crédito</span>
-                              <strong style={{ fontSize: '14px', color: '#6b21a8' }}>{formatMoeda(atacadoCredito)}</strong>
-                            </div>
-                          </div>
+                      <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                        <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', margin: '0 0 8px 0', color: '#0f172a', fontWeight: 'bold' }}>
+                          {p.nome?.toUpperCase()}{selectedColorName}
+                        </h2>
+                        <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>{p.descricao}</p>
+                      </div>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#fff7ed', padding: '8px', borderRadius: '8px' }}>
-                            <div>
-                              <span style={{ fontSize: '10px', color: '#c2410c', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Varejo À Vista/Débito</span>
-                              <strong style={{ fontSize: '14px', color: '#9a3412' }}>{formatMoeda(varejoAvista)}</strong>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: '10px', color: '#c2410c', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Varejo Prazo/Crédito</span>
-                              <strong style={{ fontSize: '14px', color: '#9a3412' }}>{formatMoeda(varejoPrazo)}</strong>
-                            </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '15px 0' }}>
+                        {currentImage ? (
+                          <img src={currentImage} alt={p.nome} style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
+                        ) : (
+                          <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                            <ImageIcon size={28} />
                           </div>
+                        )}
 
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#eff6ff', padding: '8px', borderRadius: '8px' }}>
-                            <div>
-                              <span style={{ fontSize: '10px', color: '#1d4ed8', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Meia Peça À Vista/Débito</span>
-                              <strong style={{ fontSize: '14px', color: '#1e40af' }}>{formatMoeda(meiaAvista)}</strong>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: '10px', color: '#1d4ed8', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Meia Peça Prazo/Crédito</span>
-                              <strong style={{ fontSize: '14px', color: '#1e40af' }}>{formatMoeda(meiaPrazo)}</strong>
+                        {p.produto_cores && p.produto_cores.length > 0 && (
+                          <div style={{ marginTop: '15px', textAlign: 'center' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                              {p.produto_cores.map((cor) => (
+                                <button
+                                  key={cor.id}
+                                  onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor })}
+                                  title={cor.nome_cor}
+                                  style={{ 
+                                    width: '24px', 
+                                    height: '24px', 
+                                    borderRadius: '50%', 
+                                    backgroundColor: cor.codigo_hex || '#000', 
+                                    border: selectedColorObj?.id === cor.id ? '3px solid #059669' : '2px solid white', 
+                                    boxShadow: '0 0 0 1px #cbd5e1', 
+                                    cursor: 'pointer' 
+                                  }}
+                                />
+                              ))}
                             </div>
                           </div>
-                        </>
+                        )}
+                      </div>
+
+                      {(p.tecnologias || p.conforto_text || p.versatil_text) && (
+                        <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 15px', margin: '15px 0' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                            <Sparkles size={14} /> Características e Tecnologias
+                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#14532d' }}>
+                            {p.tecnologias && <div><strong>Tecnologias:</strong> {p.tecnologias}</div>}
+                            {p.conforto_text && <div><strong>Conforto:</strong> {p.conforto_text}</div>}
+                            {p.versatil_text && <div><strong>Versatilidade:</strong> {p.versatil_text}</div>}
+                          </div>
+                        </div>
                       )}
 
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
-                        <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M/KG</span>
-                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</strong>
+                      <div style={{ border: '1.5px solid #c8d0f8', borderRadius: '12px', padding: '10px 15px', margin: '15px 0', backgroundColor: '#fafafa' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
+                          <span style={{ color: '#64748b' }}>Composição</span>
+                          <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{p.composicao || '-'}</span>
                         </div>
-                        <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M²/KG</span>
-                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</strong>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #e2e7ff', fontSize: '12px' }}>
+                          <span style={{ color: '#64748b' }}>Gramatura</span>
+                          <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.gramatura, 'g')}</span>
                         </div>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                        <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor Linear (à vista)</span>
-                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM)}</strong>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor por m² (à vista)</span>
-                          <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM2)}</strong>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '12px' }}>
+                          <span style={{ color: '#64748b' }}>Largura</span>
+                          <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{formatNumero(p.largura, 'm')}</span>
                         </div>
                       </div>
 
+                      <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '10px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Vista</span>
+                            <strong style={{ fontSize: '16px', color: '#059669' }}>{formatMoeda(p.a_vista)}</strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginBottom: '2px' }}>À Prazo</span>
+                            <strong style={{ fontSize: '15px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</strong>
+                          </div>
+                        </div>
+
+                        {canViewStorePrices && (
+                          <>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#fdf4ff', padding: '8px', borderRadius: '8px' }}>
+                              <div>
+                                <span style={{ fontSize: '10px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Débito</span>
+                                <strong style={{ fontSize: '14px', color: '#6b21a8' }}>{formatMoeda(atacadoDebito)}</strong>
+                              </div>
+                              <div>
+                                <span style={{ fontSize: '10px', color: '#7e22ce', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Atacado Cartão Crédito</span>
+                                <strong style={{ fontSize: '14px', color: '#6b21a8' }}>{formatMoeda(atacadoCredito)}</strong>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#fff7ed', padding: '8px', borderRadius: '8px' }}>
+                              <div>
+                                <span style={{ fontSize: '10px', color: '#c2410c', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Varejo À Vista/Débito</span>
+                                <strong style={{ fontSize: '14px', color: '#9a3412' }}>{formatMoeda(varejoAvista)}</strong>
+                              </div>
+                              <div>
+                                <span style={{ fontSize: '10px', color: '#c2410c', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Varejo Prazo/Crédito</span>
+                                <strong style={{ fontSize: '14px', color: '#9a3412' }}>{formatMoeda(varejoPrazo)}</strong>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px', backgroundColor: '#eff6ff', padding: '8px', borderRadius: '8px' }}>
+                              <div>
+                                <span style={{ fontSize: '10px', color: '#1d4ed8', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Meia Peça À Vista/Débito</span>
+                                <strong style={{ fontSize: '14px', color: '#1e40af' }}>{formatMoeda(meiaAvista)}</strong>
+                              </div>
+                              <div>
+                                <span style={{ fontSize: '10px', color: '#1d4ed8', display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Meia Peça Prazo/Crédito</span>
+                                <strong style={{ fontSize: '14px', color: '#1e40af' }}>{formatMoeda(meiaPrazo)}</strong>
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid #cbd5e1', marginBottom: '12px' }}>
+                          <div>
+                            <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M/KG</span>
+                            <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Rend. M²/KG</span>
+                            <strong style={{ fontSize: '13px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</strong>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                          <div>
+                            <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor Linear (à vista)</span>
+                            <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM)}</strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '10px', color: '#64748b', display: 'block' }}>Valor por m² (à vista)</span>
+                            <strong style={{ fontSize: '13px', color: '#334155' }}>{formatMoeda(valorM2)}</strong>
+                          </div>
+                        </div>
+
+                      </div>
                     </div>
-                  </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
-                    <button
-                      onClick={() => handleExportPDF(p.id, p.nome)}
-                      style={{ 
-                        backgroundColor: '#059669', 
-                        color: 'white', 
-                        border: 'none', 
-                        padding: '10px 20px', 
-                        borderRadius: '8px', 
-                        fontWeight: 'bold', 
-                        fontSize: '13px', 
-                        cursor: 'pointer', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '8px',
-                        boxShadow: '0 2px 5px rgba(5,150,105,0.3)'
-                      }}
-                    >
-                      <Download size={16} /> Exportar para PDF
-                    </button>
-                  </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
+                      <button
+                        onClick={() => handleExportPDF(p.id, p.nome)}
+                        style={{ 
+                          backgroundColor: '#059669', 
+                          color: 'white', 
+                          border: 'none', 
+                          padding: '10px 20px', 
+                          borderRadius: '8px', 
+                          fontWeight: 'bold', 
+                          fontSize: '13px', 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          boxShadow: '0 2px 5px rgba(5,150,105,0.3)'
+                        }}
+                      >
+                        <Download size={16} /> Exportar Apenas Este PDF
+                      </button>
+                    </div>
 
-                </div>
-              )
-            })}
+                  </div>
+                )
+              })}
+            </div>
+
           </div>
         ) : (
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'center', width: '100%', maxWidth: '900px' }}>
@@ -932,7 +974,6 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE GESTÃO DE UTILIZADORES */}
         {isUsersModalOpen && profile?.role === 'admin' && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
@@ -1007,7 +1048,6 @@ export default function App() {
     )
   }
 
-  // TELA DA TABELA DE PRODUTOS
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
       <OfflineBanner />
@@ -1029,7 +1069,7 @@ export default function App() {
         <Search size={18} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
         <input
           type="text"
-          placeholder="Filtrar por tecido ou composição..."
+          placeholder="Filtrar por tecido ou composição (Ex: Active, Cotton)..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: '100%', padding: '8px 12px 8px 38px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }}
@@ -1066,7 +1106,7 @@ export default function App() {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map((p, idx) => {
+            {filtrarProdutosPorTermos(products, searchTerm).map((p, idx) => {
               const atacadoDebito = p.atacado_cartao_debito || (p.a_vista ? p.a_vista * 1.03 : null)
               const atacadoCredito = p.atacado_cartao_credito || (p.a_prazo ? p.a_prazo * 1.03 : null)
               const varejoAvista = p.varejo_avista_debito || (p.a_vista ? p.a_vista * 1.30 : null)
@@ -1121,7 +1161,6 @@ export default function App() {
         </table>
       </div>
 
-      {/* MODAL DE EDIÇÃO DE PRODUTOS */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -1273,7 +1312,6 @@ export default function App() {
           </div>
         </div>
       )}
-    
     </div>
   )
 }
