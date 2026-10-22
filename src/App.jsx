@@ -341,6 +341,22 @@ export default function App() {
     setAuthError('')
     setAuthSuccess('')
 
+    // Tratamento para Login Offline
+    if (isOffline) {
+      const savedProfile = localStorage.getItem('cache_user_profile')
+      if (savedProfile) {
+        const cached = JSON.parse(savedProfile)
+        // Se o e-mail digitado for o mesmo do cache guardado
+        if (cached.email?.toLowerCase() === email.toLowerCase()) {
+          setProfile(cached)
+          setSession({ user: { id: cached.id, email: cached.email } })
+          return
+        }
+      }
+      setAuthError('Modo offline: Conecte-se à internet para realizar o primeiro login.')
+      return
+    }
+
     if (isRegistering) {
       const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) {
@@ -361,7 +377,7 @@ export default function App() {
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setAuthError('E-mail ou palavra-passe incorretos.')
+      if (error) setAuthError('E-mail ou palavra-passe incorretos ou sem conexão.')
     }
   }
 
