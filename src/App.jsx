@@ -204,17 +204,23 @@ export default function App() {
   const fetchUserProfile = async (userId) => {
     try {
       const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+      if (error) throw error
+      
       if (data) {
         setProfile(data)
+        // Salva o perfil no cache local para uso offline
         localStorage.setItem('cache_user_profile', JSON.stringify(data))
       } else {
         setProfile({ id: userId, role: 'user', approved: false })
       }
     } catch (err) {
-      console.error(err)
+      console.log('Sem internet, a carregar perfil do cache local...')
       const savedProfile = localStorage.getItem('cache_user_profile')
       if (savedProfile) {
         setProfile(JSON.parse(savedProfile))
+      } else {
+        // Fallback caso não haja cache salvo
+        setProfile({ id: userId, role: 'user', approved: false })
       }
     }
   }
