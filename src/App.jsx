@@ -1106,7 +1106,7 @@ export default function App() {
             </tr>
           </thead>
           <tbody>
-            {filtrarProdutosPorTermos(products, searchTerm).map((p, idx) => {
+            {(searchTerm.trim() ? filtrarProdutosPorTermos(products, searchTerm) : products).map((p, idx) => {
               const atacadoDebito = p.atacado_cartao_debito || (p.a_vista ? p.a_vista * 1.03 : null)
               const atacadoCredito = p.atacado_cartao_credito || (p.a_prazo ? p.a_prazo * 1.03 : null)
               const varejoAvista = p.varejo_avista_debito || (p.a_vista ? p.a_vista * 1.30 : null)
