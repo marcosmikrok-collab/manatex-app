@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download, WifiOff } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -21,8 +21,15 @@ const formatNumero = (valor, sufixo = '') => {
 export default function App() {
   const [appUpdate, setAppUpdate] = useState(null)
   const [showUpdate, setShowUpdate] = useState(false)
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
 
   useEffect(() => {
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
     const verificarAtualizacao = async () => {
       try {
         const resposta = await fetch('/version.json', { cache: 'no-store' })
@@ -40,8 +47,16 @@ export default function App() {
       }
     }
 
-    verificarAtualizacao()
+    if (navigator.onLine) {
+      verificarAtualizacao()
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
   }, [])
+
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   
@@ -108,16 +123,13 @@ export default function App() {
       const calcPrazo = aVista * 1.06
       aPrazo = calcPrazo.toFixed(2).replace('.', ',')
 
-      // Atacado Cartão
       atacadoCartaoDebito = (aVista * 1.03).toFixed(2).replace('.', ',')
       atacadoCartaoCredito = (calcPrazo * 1.03).toFixed(2).replace('.', ',')
 
-      // Varejo
       const calcVarejoAvista = aVista * 1.30
       varejoAvistaDebito = calcVarejoAvista.toFixed(2).replace('.', ',')
       varejoPrazoCredito = (calcVarejoAvista * 1.06).toFixed(2).replace('.', ',')
 
-      // Meia Peça
       const calcMeiaAvista = aVista * 1.15
       meiaPecaAvistaDebito = calcMeiaAvista.toFixed(2).replace('.', ',')
       meiaPecaPrazoCredito = (calcMeiaAvista * 1.06).toFixed(2).replace('.', ',')
@@ -191,11 +203,19 @@ export default function App() {
 
   const fetchUserProfile = async (userId) => {
     try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
-      if (data) setProfile(data)
-      else setProfile({ id: userId, role: 'user', approved: false })
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+      if (data) {
+        setProfile(data)
+        localStorage.setItem('cache_user_profile', JSON.stringify(data))
+      } else {
+        setProfile({ id: userId, role: 'user', approved: false })
+      }
     } catch (err) {
       console.error(err)
+      const savedProfile = localStorage.getItem('cache_user_profile')
+      if (savedProfile) {
+        setProfile(JSON.parse(savedProfile))
+      }
     }
   }
 
@@ -258,23 +278,49 @@ export default function App() {
   const fetchProducts = async () => {
     if (!selectedBrand) return
     setLoading(true)
-    const { data } = await supabase
-      .from('produtos')
-      .select('*, produto_cores(*)')
-      .eq('marca', selectedBrand)
-      .order('id', { ascending: true })
+    try {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*, produto_cores(*)')
+        .eq('marca', selectedBrand)
+        .order('id', { ascending: true })
 
-    setProducts(data || [])
+      if (error) throw error
+
+      if (data) {
+        setProducts(data)
+        localStorage.setItem(`cache_products_${selectedBrand}`, JSON.stringify(data))
+      }
+    } catch (err) {
+      console.log('Sem conexão. Carregando marca do cache local...')
+      const savedBrandProducts = localStorage.getItem(`cache_products_${selectedBrand}`)
+      if (savedBrandProducts) {
+        setProducts(JSON.parse(savedBrandProducts))
+      }
+    }
     setLoading(false)
   }
 
   const fetchAllProducts = async () => {
-    const { data } = await supabase
-      .from('produtos')
-      .select('*, produto_cores(*)')
-      .order('nome', { ascending: true })
+    try {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*, produto_cores(*)')
+        .order('nome', { ascending: true })
 
-    setAllProducts(data || [])
+      if (error) throw error
+
+      if (data) {
+        setAllProducts(data)
+        localStorage.setItem('cache_all_products', JSON.stringify(data))
+      }
+    } catch (err) {
+      console.log('Sem conexão. Carregando catálogo geral do cache local...')
+      const savedProducts = localStorage.getItem('cache_all_products')
+      if (savedProducts) {
+        setAllProducts(JSON.parse(savedProducts))
+      }
+    }
   }
 
   useEffect(() => {
@@ -374,6 +420,11 @@ export default function App() {
 
   const handleSaveProduct = async (e) => {
     e.preventDefault()
+    if (isOffline) {
+      alert('Não é possível salvar alterações estando offline.')
+      return
+    }
+
     const calc = recalcularValores(formData.a_vista, formData.rendimento_m, formData.rendimento_m2)
 
     const payload = {
@@ -446,6 +497,11 @@ export default function App() {
   }
 
   const handleDelete = async (id) => {
+    if (isOffline) {
+      alert('Não é possível remover produtos estando offline.')
+      return
+    }
+
     if (confirm("Pretende eliminar este produto?")) {
       await supabase.from('produtos').delete().eq('id', id)
       fetchProducts()
@@ -530,11 +586,19 @@ export default function App() {
 
   const canViewStorePrices = profile?.role === 'admin' || profile?.role === 'loja'
 
+  // BANNER DE AVISO OFFLINE
+  const OfflineBanner = () => isOffline ? (
+    <div style={{ backgroundColor: '#f59e0b', color: 'white', padding: '6px 12px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+      <WifiOff size={16} /> Modo Offline — Exibindo dados em cache local
+    </div>
+  ) : null
+
   // LOGIN / REGISTO
   if (!session) {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
-        <form onSubmit={handleAuth} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px' }}>
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
+        <OfflineBanner />
+        <form onSubmit={handleAuth} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', width: '100%', maxWidth: '360px', marginTop: '10px' }}>
           <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
             {isRegistering ? <UserPlus size={40} /> : <Lock size={40} />}
             <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>
@@ -579,8 +643,9 @@ export default function App() {
   // TELA DE ESPERA DE APROVAÇÃO
   if (profile && !profile.approved) {
     return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
-        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
+        <OfflineBanner />
+        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%', marginTop: '10px' }}>
           <ShieldAlert size={48} color="#d97706" style={{ marginBottom: '15px' }} />
           <h2 style={{ margin: '0 0 10px 0', color: '#1e293b', fontSize: '20px' }}>Aprovação Pendente</h2>
           <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.5', marginBottom: '20px' }}>
@@ -598,7 +663,8 @@ export default function App() {
   if (!selectedBrand) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <header style={{ width: '100%', maxWidth: '900px', backgroundColor: '#059669', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <OfflineBanner />
+        <header style={{ width: '100%', maxWidth: '900px', backgroundColor: '#059669', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', marginTop: '10px' }}>
           <h1 style={{ margin: 0, fontSize: '18px' }}>Catálogo Geral</h1>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -922,7 +988,8 @@ export default function App() {
   // TELA DA TABELA DE PRODUTOS
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
-      <header style={{ backgroundColor: brandColor, color: 'white', padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+      <OfflineBanner />
+      <header style={{ backgroundColor: brandColor, color: 'white', padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', marginTop: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button onClick={() => setSelectedBrand(null)} style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
             <ArrowLeft size={18} />
@@ -1058,7 +1125,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* CAMPOS EDITÁVEIS DOS NOVOS PREÇOS CALCULADOS */}
               <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', backgroundColor: '#f8fafc' }}>
                 <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '8px' }}>
                   Preços Calculados (Ajuste manual opcional)
