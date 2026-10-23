@@ -260,10 +260,11 @@ export default function App() {
     if (!selectedBrand) return
     setLoading(true)
     try {
+      // Faz a busca ignorando maiúsculas/minúsculas e variações da marca
       const { data, error } = await supabase
         .from('produtos')
         .select('*, produto_cores(*)')
-        .eq('marca', selectedBrand)
+        .ilike('marca', `%${selectedBrand}%`)
         .order('id', { ascending: true })
 
       if (error) throw error
@@ -273,6 +274,7 @@ export default function App() {
         localStorage.setItem(`cache_products_${selectedBrand}`, JSON.stringify(data))
       }
     } catch (err) {
+      console.log('Sem conexão. Carregando marca do cache local...')
       const savedBrandProducts = localStorage.getItem(`cache_products_${selectedBrand}`)
       if (savedBrandProducts) {
         setProducts(JSON.parse(savedBrandProducts))
