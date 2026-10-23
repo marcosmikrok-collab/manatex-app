@@ -260,7 +260,7 @@ export default function App() {
     if (!selectedBrand) return
     setLoading(true)
     try {
-      // Faz a busca ignorando maiúsculas/minúsculas e variações da marca
+      // Procura por variações de msport (ex: msport, MSport, MSports)
       const { data, error } = await supabase
         .from('produtos')
         .select('*, produto_cores(*)')
@@ -969,8 +969,8 @@ export default function App() {
               <img src="/mana.jpg" alt="Manatex" style={{ maxHeight: '50px', marginBottom: '10px' }} />
               <p style={{ color: '#64748b', margin: 0 }}>Tabela de produtos Manatex</p>
             </div>
-            <div onClick={() => setSelectedBrand('msports')} style={{ flex: '1 1 260px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
-              <img src="/msports.jpg" alt="MSports" style={{ maxHeight: '50px', marginBottom: '10px', backgroundColor: 'white', padding: '4px' }} />
+            <div onClick={() => setSelectedBrand('msport')} style={{ flex: '1 1 260px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
+              <img src="/msports.jpg" alt="MSport" style={{ maxHeight: '50px', marginBottom: '10px', backgroundColor: 'white', padding: '4px' }} />
               <p style={{ color: '#9ca3af', margin: 0 }}>Tabela de produtos MSport</p>
             </div>
           </div>
