@@ -260,11 +260,13 @@ export default function App() {
     if (!selectedBrand) return
     setLoading(true)
     try {
-      // Procura por variações de msport (ex: msport, MSport, MSports)
+      // Se a marca selecionada for msport, busca tanto "msport" quanto "msports" na base de dados
+      const searchTermBrand = selectedBrand.toLowerCase() === 'msport' ? 'msport' : selectedBrand
+
       const { data, error } = await supabase
         .from('produtos')
         .select('*, produto_cores(*)')
-        .ilike('marca', `%${selectedBrand}%`)
+        .or(`marca.ilike.%${searchTermBrand}%,marca.ilike.%msports%`)
         .order('id', { ascending: true })
 
       if (error) throw error
