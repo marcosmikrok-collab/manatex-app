@@ -969,7 +969,7 @@ export default function App() {
             </div>
             <div onClick={() => setSelectedBrand('msport')} style={{ flex: '1 1 260px', backgroundColor: '#111827', border: '2px solid #111827', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
               <img src="/msports.jpg" alt="MSport" style={{ maxHeight: '50px', marginBottom: '10px', backgroundColor: 'white', padding: '4px' }} />
-              <p style={{ color: '#9ca3af', margin: 0 }}>Tabela de produtos MSport</p>
+              <p style={{ color: '#9ca3af', margin: 0 }}>Tabela de produtos MSports</p>
             </div>
           </div>
         )}
