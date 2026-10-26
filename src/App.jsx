@@ -450,8 +450,8 @@ export default function App() {
 
   const getNomeFormaPagamento = (forma) => {
     switch (forma) {
-      case 'a_vista': return 'À Vista / PIX'
-      case 'a_prazo': return 'À Prazo (Boleto/Faturado)'
+      case 'a_vista': return 'À Vista'
+      case 'a_prazo': return 'À Prazo'
       case 'atacado_debito': return 'Atacado (Cartão Débito)'
       case 'atacado_credito': return 'Atacado (Cartão Crédito)'
       case 'varejo_avista': return 'Varejo (À Vista / Débito)'
