@@ -1168,8 +1168,8 @@ export default function App() {
                     onChange={(e) => setFormaPagamento(e.target.value)}
                     style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 'bold', boxSizing: 'border-box' }}
                   >
-                    <option value="a_vista">À Vista / PIX</option>
-                    <option value="a_prazo">À Prazo (Boleto/Faturado)</option>
+                    <option value="a_vista">À Vista</option>
+                    <option value="a_prazo">À Prazo</option>
                     <option value="atacado_debito">Atacado - Cartão Débito (+3%)</option>
                     <option value="atacado_credito">Atacado - Cartão Crédito (+3% a prazo)</option>
                     <option value="varejo_avista">Varejo - À Vista / Débito (+30%)</option>
@@ -1590,8 +1590,8 @@ export default function App() {
                   onChange={(e) => setFormaPagamento(e.target.value)}
                   style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 'bold', boxSizing: 'border-box' }}
                 >
-                  <option value="a_vista">À Vista / PIX</option>
-                  <option value="a_prazo">À Prazo (Boleto/Faturado)</option>
+                  <option value="a_vista">À Vista</option>
+                  <option value="a_prazo">À Prazo</option>
                   <option value="atacado_debito">Atacado - Cartão Débito (+3%)</option>
                   <option value="atacado_credito">Atacado - Cartão Crédito (+3% a prazo)</option>
                   <option value="varejo_avista">Varejo - À Vista / Débito (+30%)</option>
