@@ -1355,7 +1355,6 @@ export default function App() {
 
                   <div style={{ marginTop: '30px', textAlign: 'center', fontSize: '10px', color: '#94a3b8', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                     Este orçamento tem validade sujeita à confirmação de estoque e alteração de tabela sem aviso prévio.
-                    Frete não incluso - consultar antes. 
                   </div>
 
                 </div>
