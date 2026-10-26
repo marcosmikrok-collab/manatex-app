@@ -62,8 +62,8 @@ export default function App() {
   // ESTADOS DO MÓDULO DE ORÇAMENTO
   const [isOrcamentoOpen, setIsOrcamentoOpen] = useState(false)
   const [clienteNome, setClienteNome] = useState('')
-  const [formaPagamento, setFormaPagamento] = useState('a_vista') // a_vista, a_prazo, atacado_debito, atacado_credito, varejo_avista, varejo_prazo, meia_avista, meia_prazo
-  const [itensOrcamento, setItensOrcamento] = useState([]) // { produtoId, nome, cor, kg, precoUnitario, totalItem }
+  const [formaPagamento, setFormaPagamento] = useState('a_vista') 
+  const [itensOrcamento, setItensOrcamento] = useState([]) 
   const [selectedProdutoParaAdd, setSelectedProdutoParaAdd] = useState('')
   const [selectedCorParaAdd, setSelectedCorParaAdd] = useState('')
   const [qtdKgInput, setQtdKgInput] = useState('')
@@ -363,11 +363,19 @@ export default function App() {
     supabase.auth.signOut()
   }
 
-  // LÓGICA DE ORÇAMENTO
+  const canViewStorePrices = profile?.role === 'admin' || profile?.role === 'loja'
+
+  // LÓGICA DE ORÇAMENTO (Respeitando permissão de preços)
   const getPrecoPorFormaPagamento = (prod, forma) => {
     if (!prod) return 0
     const aVista = prod.a_vista || 0
     const aPrazo = prod.a_prazo || (aVista * 1.06)
+
+    // Se for perfil comum ('user'), só pode ver À Vista ou À Prazo básico
+    if (!canViewStorePrices) {
+      if (forma === 'a_prazo') return aPrazo
+      return aVista
+    }
 
     switch (forma) {
       case 'a_vista':
@@ -429,7 +437,6 @@ export default function App() {
     setItensOrcamento(itensOrcamento.filter(item => item.id !== id))
   }
 
-  // Recalcular preços ao mudar a forma de pagamento no orçamento
   useEffect(() => {
     if (itensOrcamento.length > 0) {
       const atualizados = itensOrcamento.map(item => {
@@ -443,7 +450,7 @@ export default function App() {
       })
       setItensOrcamento(atualizados)
     }
-  }, [formaPagamento])
+  }, [formaPagamento, profile])
 
   const totalGeralOrcamento = itensOrcamento.reduce((acc, curr) => acc + curr.totalItem, 0)
   const totalKgOrcamento = itensOrcamento.reduce((acc, curr) => acc + curr.kg, 0)
@@ -452,12 +459,12 @@ export default function App() {
     switch (forma) {
       case 'a_vista': return 'À Vista'
       case 'a_prazo': return 'À Prazo'
-      case 'atacado_debito': return 'Atacado (Cartão Débito)'
-      case 'atacado_credito': return 'Atacado (Cartão Crédito)'
-      case 'varejo_avista': return 'Varejo (À Vista / Débito)'
-      case 'varejo_prazo': return 'Varejo (Prazo / Crédito)'
-      case 'meia_avista': return 'Meia Peça (À Vista / Débito)'
-      case 'meia_prazo': return 'Meia Peça (Prazo / Crédito)'
+      case 'atacado_debito': return 'Atacado - Débito'
+      case 'atacado_credito': return 'Atacado - Crédito'
+      case 'varejo_avista': return 'Varejo - À Vista'
+      case 'varejo_prazo': return 'Varejo - Prazo'
+      case 'meia_avista': return 'Meia Peça - À Vista'
+      case 'meia_prazo': return 'Meia Peça - Prazo'
       default: return 'À Vista'
     }
   }
@@ -510,7 +517,6 @@ export default function App() {
     }
   }
 
-  // EXPORTAR PDF INDIVIDUAL E MÚLTIPLO DO CATÁLOGO
   const handleExportPDF = async (productId, productName) => {
     const element = cardRefs.current[productId]
     if (!element) return
@@ -774,8 +780,6 @@ export default function App() {
 
   const isManatex = selectedBrand === 'manatex'
   const brandColor = isManatex ? '#059669' : '#111827'
-
-  const canViewStorePrices = profile?.role === 'admin' || profile?.role === 'loja'
 
   const OfflineBanner = () => isOffline ? (
     <div style={{ backgroundColor: '#f59e0b', color: 'white', padding: '6px 12px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
@@ -1134,7 +1138,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE GERAR ORÇAMENTO */}
+        {/* MODAL DE GERAR ORÇAMENTO (Restrito por perfil e sem pix/boleto/faturado) */}
         {isOrcamentoOpen && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
@@ -1148,7 +1152,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* DADOS DO CLIENTE E REGRA DE PREÇO */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Nome do Cliente (Opcional)</label>
@@ -1162,7 +1165,7 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Forma / Regra de Pagamento</label>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Forma / Condição de Pagamento</label>
                   <select
                     value={formaPagamento}
                     onChange={(e) => setFormaPagamento(e.target.value)}
@@ -1170,17 +1173,20 @@ export default function App() {
                   >
                     <option value="a_vista">À Vista</option>
                     <option value="a_prazo">À Prazo</option>
-                    <option value="atacado_debito">Atacado - Cartão Débito (+3%)</option>
-                    <option value="atacado_credito">Atacado - Cartão Crédito (+3% a prazo)</option>
-                    <option value="varejo_avista">Varejo - À Vista / Débito (+30%)</option>
-                    <option value="varejo_prazo">Varejo - Prazo / Crédito (+30% + 6%)</option>
-                    <option value="meia_avista">Meia Peça - À Vista / Débito (+15%)</option>
-                    <option value="meia_prazo">Meia Peça - Prazo / Crédito (+15% + 6%)</option>
+                    {canViewStorePrices && (
+                      <>
+                        <option value="atacado_debito">Atacado - Débito (+3%)</option>
+                        <option value="atacado_credito">Atacado - Crédito (+3% a prazo)</option>
+                        <option value="varejo_avista">Varejo - À Vista (+30%)</option>
+                        <option value="varejo_prazo">Varejo - Prazo (+30% + 6%)</option>
+                        <option value="meia_avista">Meia Peça - À Vista (+15%)</option>
+                        <option value="meia_prazo">Meia Peça - Prazo (+15% + 6%)</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
 
-              {/* ADICIONAR PRODUTOS */}
               <div style={{ backgroundColor: '#eff6ff', padding: '12px', borderRadius: '8px', border: '1px solid #bfdbfe', marginBottom: '15px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e40af', display: 'block', marginBottom: '8px' }}>
                   + Adicionar Tecido ao Orçamento
@@ -1240,7 +1246,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* LISTA DE ITENS NO ORÇAMENTO */}
               {itensOrcamento.length === 0 ? (
                 <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', margin: '20px 0' }}>
                   Nenhum produto adicionado ao orçamento ainda.
@@ -1298,7 +1303,6 @@ export default function App() {
                 </>
               )}
 
-              {/* DESIGN OCULTO/PRINT DO PDF DO ORÇAMENTO */}
               <div style={{ display: 'none' }}>
                 <div ref={orcamentoPdfRef} style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#ffffff', color: '#1e293b' }}>
                   
@@ -1557,7 +1561,6 @@ export default function App() {
         </table>
       </div>
 
-      {/* MODAL DE ORÇAMENTO TAMBÉM ACESSÍVEL DENTRO DA MARCA */}
       {isOrcamentoOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
@@ -1584,7 +1587,7 @@ export default function App() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Forma / Regra de Pagamento</label>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Forma / Condição de Pagamento</label>
                 <select
                   value={formaPagamento}
                   onChange={(e) => setFormaPagamento(e.target.value)}
@@ -1592,12 +1595,16 @@ export default function App() {
                 >
                   <option value="a_vista">À Vista</option>
                   <option value="a_prazo">À Prazo</option>
-                  <option value="atacado_debito">Atacado - Cartão Débito (+3%)</option>
-                  <option value="atacado_credito">Atacado - Cartão Crédito (+3% a prazo)</option>
-                  <option value="varejo_avista">Varejo - À Vista / Débito (+30%)</option>
-                  <option value="varejo_prazo">Varejo - Prazo / Crédito (+30% + 6%)</option>
-                  <option value="meia_avista">Meia Peça - À Vista / Débito (+15%)</option>
-                  <option value="meia_prazo">Meia Peça - Prazo / Crédito (+15% + 6%)</option>
+                  {canViewStorePrices && (
+                    <>
+                      <option value="atacado_debito">Atacado - Débito (+3%)</option>
+                      <option value="atacado_credito">Atacado - Crédito (+3% a prazo)</option>
+                      <option value="varejo_avista">Varejo - À Vista (+30%)</option>
+                      <option value="varejo_prazo">Varejo - Prazo (+30% + 6%)</option>
+                      <option value="meia_avista">Meia Peça - À Vista (+15%)</option>
+                      <option value="meia_prazo">Meia Peça - Prazo (+15% + 6%)</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>
