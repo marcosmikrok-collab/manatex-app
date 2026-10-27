@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download, WifiOff, FileText, Calculator, Send, Star } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download, WifiOff, FileText, Calculator, Send, Check } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -52,23 +52,23 @@ export default function App() {
   const [composicaoFilter, setComposicaoFilter] = useState('todas')
   const [sortBy, setSortBy] = useState('az') // 'az', 'menor_preco', 'maior_preco', 'menor_gramatura'
 
-  // MODAIS E ESTADOS DE ORÇAMENTO / DETALHES
+  // GESTÃO DE USUÁRIOS (ADMIN)
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false)
   const [allProfiles, setAllProfiles] = useState([])
-  const [isOrcamentoOpen, setIsOrcamentoOpen] = useState(false)
-  
-  // FICHA DO PRODUTO SELECIONADO
+
+  // FICHA DO PRODUTO E MONTAGEM DE ORÇAMENTO
   const [selectedProductDetails, setSelectedProductDetails] = useState(null)
   const [selectedCorOrcamento, setSelectedCorOrcamento] = useState('')
   const [selectedCorImagemUrl, setSelectedCorImagemUrl] = useState('')
   const [qtdKgOrcamento, setQtdKgOrcamento] = useState('')
   const [formaPagamentoOrcamento, setFormaPagamentoOrcamento] = useState('a_vista')
   
+  const [isOrcamentoOpen, setIsOrcamentoOpen] = useState(false)
   const [clienteNome, setClienteNome] = useState('')
   const [itensOrcamento, setItensOrcamento] = useState([])
   const orcamentoPdfRef = useRef(null)
 
-  // CADASTRO / EDIÇÃO DE PRODUTOS (ADMIN)
+  // MODAL CADASTRO / EDIÇÃO DE PRODUTOS (ADMIN)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({
@@ -82,6 +82,7 @@ export default function App() {
   })
   const [formCores, setFormCores] = useState([])
 
+  // REGRAS DE CÁLCULO AUTOMÁTICO DE PREÇOS (BASEADO NO À VISTA)
   const parseInputValue = (val) => {
     if (val === null || val === undefined || val === '') return null
     if (typeof val === 'number') return parseFloat(val.toFixed(2))
@@ -217,6 +218,24 @@ export default function App() {
     }
   }
 
+  const handleUpdateRole = async (userId, newRole) => {
+    try {
+      await supabase.from('profiles').update({ role: newRole }).eq('id', userId)
+      fetchAllProfiles()
+    } catch (err) {
+      alert('Erro ao atualizar permissão.')
+    }
+  }
+
+  const handleToggleApprove = async (userId, currentStatus) => {
+    try {
+      await supabase.from('profiles').update({ approved: !currentStatus }).eq('id', userId)
+      fetchAllProfiles()
+    } catch (err) {
+      alert('Erro ao alterar status de aprovação.')
+    }
+  }
+
   const fetchAllProducts = async () => {
     setLoading(true)
     try {
@@ -286,6 +305,7 @@ export default function App() {
     supabase.auth.signOut()
   }
 
+  // REGRAS DE VISIBILIDADE DE PREÇOS DE LOJA
   const canViewStorePrices = profile?.role === 'admin' || profile?.role === 'loja'
 
   const getPrecoPorFormaPagamento = (prod, forma) => {
@@ -329,12 +349,13 @@ export default function App() {
       marca: selectedProductDetails.marca,
       cor: selectedCorOrcamento || 'Padrão',
       kg: kg,
+      formaPagamento: formaPagamentoOrcamento,
       precoUnitario: precoUnit,
       totalItem: total
     }
 
     setItensOrcamento([...itensOrcamento, novoItem])
-    alert('Item adicionado ao orçamento com sucesso!')
+    alert('Item adicionado ao orçamento!')
     setSelectedProductDetails(null)
     setQtdKgOrcamento('')
     setSelectedCorOrcamento('')
@@ -347,6 +368,20 @@ export default function App() {
 
   const totalGeralOrcamento = itensOrcamento.reduce((acc, curr) => acc + curr.totalItem, 0)
   const totalKgOrcamento = itensOrcamento.reduce((acc, curr) => acc + curr.kg, 0)
+
+  const getNomeFormaPagamento = (forma) => {
+    switch (forma) {
+      case 'a_vista': return 'À Vista'
+      case 'a_prazo': return 'À Prazo'
+      case 'atacado_debito': return 'Atacado - Débito'
+      case 'atacado_credito': return 'Atacado - Crédito'
+      case 'varejo_avista': return 'Varejo - À Vista'
+      case 'varejo_prazo': return 'Varejo - Prazo'
+      case 'meia_avista': return 'Meia Peça - À Vista'
+      case 'meia_prazo': return 'Meia Peça - Prazo'
+      default: return 'À Vista'
+    }
+  }
 
   const handleExportOrcamentoPDF = async () => {
     const element = orcamentoPdfRef.current
@@ -444,7 +479,7 @@ export default function App() {
           <div style={{ textAlign: 'center', marginBottom: '20px', color: '#059669' }}>
             {isRegistering ? <UserPlus size={40} /> : <Lock size={40} />}
             <h2 style={{ margin: '10px 0 0 0', color: '#1e293b', fontSize: '20px' }}>
-              {isRegistering ? 'Criar Nova Conta' : 'Catálogo de Preços Unificado'}
+              {isRegistering ? 'Criar Nova Conta' : 'Catálogo Unificado'}
             </h2>
           </div>
 
@@ -500,12 +535,12 @@ export default function App() {
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <OfflineBanner />
       
-      {/* HEADER PRINCIPAL COM CONTADORES */}
+      {/* HEADER PRINCIPAL COM CONTADORES E CONTROLE DE NÍVEIS DE ACESSO */}
       <header style={{ width: '100%', maxWidth: '900px', backgroundColor: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', gap: '15px' }}>
           <div style={{ backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
             <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a', display: 'block' }}>{filteredProducts.length}</span>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>produtos na consulta</span>
+            <span style={{ fontSize: '11px', color: '#64748b' }}>produtos</span>
           </div>
           <div style={{ backgroundColor: '#f0fdf4', padding: '8px 12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
             <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#059669', display: 'block' }}>{manatexCount}</span>
@@ -531,7 +566,7 @@ export default function App() {
                 onClick={() => { fetchAllProfiles(); setIsUsersModalOpen(true) }} 
                 style={{ backgroundColor: '#f1f5f9', color: '#059669', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
               >
-                <Users size={16} /> Gestão
+                <Users size={16} /> Usuários
               </button>
               <button 
                 onClick={() => { setEditingId(null); setFormData({ nome: '', marca: 'manatex', a_vista: '', a_prazo: '', atacado_cartao_debito: '', atacado_cartao_credito: '', varejo_avista_debito: '', varejo_prazo_credito: '', meia_peca_avista_debito: '', meia_peca_prazo_credito: '', valor_m: '', valor_m2: '', largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '', descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: '' }); setFormCores([]); setIsModalOpen(true) }} 
@@ -548,14 +583,14 @@ export default function App() {
         </div>
       </header>
 
-      {/* BARRA DE PESQUISA, ABAS DE MARCA E FILTROS */}
+      {/* FILTROS E PESQUISA */}
       <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
         
         <div style={{ position: 'relative', width: '100%' }}>
           <Search size={20} style={{ position: 'absolute', left: '15px', top: '14px', color: '#64748b' }} />
           <input
             type="text"
-            placeholder="Buscar produto ou composição (ex: Active, Cotton)..."
+            placeholder="Buscar por produto ou composição (ex: Active, Cotton)..."
             value={globalSearchTerm}
             onChange={(e) => setGlobalSearchTerm(e.target.value)}
             style={{ width: '100%', padding: '12px 15px 12px 45px', borderRadius: '10px', border: '2px solid #cbd5e1', outline: 'none', boxSizing: 'border-box', fontSize: '15px', backgroundColor: 'white' }}
@@ -565,19 +600,19 @@ export default function App() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', backgroundColor: '#e2e8f0', padding: '4px', borderRadius: '10px' }}>
           <button
             onClick={() => setBrandFilter('todas')}
-            style={{ backgroundColor: brandFilter === 'todas' ? '#0f172a' : 'transparent', color: brandFilter === 'todas' ? 'white' : '#475569', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' }}
+            style={{ backgroundColor: brandFilter === 'todas' ? '#0f172a' : 'transparent', color: brandFilter === 'todas' ? 'white' : '#475569', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
           >
             Todas
           </button>
           <button
             onClick={() => setBrandFilter('manatex')}
-            style={{ backgroundColor: brandFilter === 'manatex' ? '#059669' : 'transparent', color: brandFilter === 'manatex' ? 'white' : '#475569', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' }}
+            style={{ backgroundColor: brandFilter === 'manatex' ? '#059669' : 'transparent', color: brandFilter === 'manatex' ? 'white' : '#475569', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
           >
             Manatex
           </button>
           <button
             onClick={() => setBrandFilter('msport')}
-            style={{ backgroundColor: brandFilter === 'msport' ? '#111827' : 'transparent', color: brandFilter === 'msport' ? 'white' : '#475569', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s' }}
+            style={{ backgroundColor: brandFilter === 'msport' ? '#111827' : 'transparent', color: brandFilter === 'msport' ? 'white' : '#475569', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
           >
             M Sport
           </button>
@@ -609,7 +644,7 @@ export default function App() {
 
       </div>
 
-      {/* LISTAGEM DOS CARDS DE PRODUTOS COM IMAGEM */}
+      {/* LISTAGEM DOS CARDS */}
       <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
         {filteredProducts.map((p) => {
           const isMana = p.marca?.toLowerCase().includes('manatex')
@@ -621,7 +656,7 @@ export default function App() {
                 setSelectedCorOrcamento(p.produto_cores?.[0]?.nome_cor || '')
                 setSelectedCorImagemUrl(p.produto_cores?.[0]?.imagem_url || p.imagem_url || '')
               }}
-              style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', cursor: 'pointer', transition: 'transform 0.1s', position: 'relative' }}
+              style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', cursor: 'pointer', position: 'relative' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                 <h3 style={{ margin: 0, fontSize: '20px', color: '#0f172a', fontWeight: 'bold' }}>{p.nome?.toUpperCase()}</h3>
@@ -632,7 +667,6 @@ export default function App() {
 
               <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 12px 0' }}>{p.composicao || 'Composição não informada'}</p>
 
-              {/* IMAGEM DO PRODUTO NO CARD */}
               {p.imagem_url && (
                 <div style={{ textAlign: 'center', margin: '12px 0', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px' }}>
                   <img src={p.imagem_url} alt={p.nome} style={{ maxHeight: '140px', maxWidth: '100%', objectFit: 'contain', borderRadius: '6px' }} />
@@ -663,7 +697,7 @@ export default function App() {
         })}
       </div>
 
-      {/* MODAL / FICHA DETALHADA COM IMAGEM DINÂMICA DA COR */}
+      {/* MODAL / FICHA DETALHADA DO PRODUTO (REPRESENTANTE VS LOJA) */}
       {selectedProductDetails && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', width: '100%', maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative' }}>
@@ -684,7 +718,7 @@ export default function App() {
             </h2>
             <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>{selectedProductDetails.composicao}</p>
 
-            {/* IMAGEM DINÂMICA (Muda ao clicar na cor ou exibe a principal) */}
+            {/* IMAGEM DA COR SELECIONADA */}
             {(selectedCorImagemUrl || selectedProductDetails.imagem_url) && (
               <div style={{ textAlign: 'center', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <img 
@@ -700,6 +734,7 @@ export default function App() {
               </div>
             )}
 
+            {/* PREÇOS PRINCIPAIS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
               <div style={{ backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
                 <span style={{ fontSize: '11px', color: '#166534', display: 'block' }}>À vista / kg</span>
@@ -711,6 +746,24 @@ export default function App() {
               </div>
             </div>
 
+            {/* EXIBIÇÃO DOS 6 PREÇOS EXCLUSIVOS DE LOJA/ADMIN */}
+            {canViewStorePrices && (
+              <div style={{ backgroundColor: '#fdf2f8', border: '1px solid #fbcfe8', padding: '12px', borderRadius: '10px', marginBottom: '15px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#9d174d', display: 'block', marginBottom: '8px' }}>
+                  Tabela de Preços da Loja Interna:
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', fontSize: '11px', color: '#831843' }}>
+                  <div>Atacado Débito (+3%): <strong>{formatMoeda(selectedProductDetails.atacado_cartao_debito || selectedProductDetails.a_vista * 1.03)}</strong></div>
+                  <div>Atacado Crédito (+3% pr): <strong>{formatMoeda(selectedProductDetails.atacado_cartao_credito || selectedProductDetails.a_prazo * 1.03)}</strong></div>
+                  <div>Varejo À Vista (+30%): <strong>{formatMoeda(selectedProductDetails.varejo_avista_debito || selectedProductDetails.a_vista * 1.30)}</strong></div>
+                  <div>Varejo Prazo (+30%+6%): <strong>{formatMoeda(selectedProductDetails.varejo_prazo_credito || selectedProductDetails.a_vista * 1.30 * 1.06)}</strong></div>
+                  <div>Meia Peça À Vista (+15%): <strong>{formatMoeda(selectedProductDetails.meia_peca_avista_debito || selectedProductDetails.a_vista * 1.15)}</strong></div>
+                  <div>Meia Peça Prazo (+15%+6%): <strong>{formatMoeda(selectedProductDetails.meia_peca_prazo_credito || selectedProductDetails.a_vista * 1.15 * 1.06)}</strong></div>
+                </div>
+              </div>
+            )}
+
+            {/* ESPECIFICAÇÕES TÉCNICAS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', color: '#334155', marginBottom: '20px', backgroundColor: '#fdf4ff', padding: '12px', borderRadius: '8px' }}>
               <div>Largura: <strong>{formatNumero(selectedProductDetails.largura, ' m')}</strong></div>
               <div>Gramatura: <strong>{formatNumero(selectedProductDetails.gramatura, ' g/m²')}</strong></div>
@@ -720,11 +773,11 @@ export default function App() {
               <div>Valor por m²: <strong>{formatMoeda(selectedProductDetails.valor_m2)}</strong></div>
             </div>
 
-            {/* SELEÇÃO DE CORES (Atualiza a imagem ao clicar) */}
+            {/* CORES DO TECIDO */}
             {selectedProductDetails.produto_cores && selectedProductDetails.produto_cores.length > 0 && (
               <div style={{ marginBottom: '15px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                  Cores do tecido ({selectedProductDetails.produto_cores.length} disponíveis) — Clique para ver a foto:
+                  Cores do tecido ({selectedProductDetails.produto_cores.length} disponíveis):
                 </span>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
                   {selectedProductDetails.produto_cores.map(c => (
@@ -749,7 +802,7 @@ export default function App() {
               </div>
             )}
 
-            {/* BLOCO ORÇAMENTO */}
+            {/* BLOCO DE MONTAGEM DO ORÇAMENTO */}
             <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '15px', marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Calculator size={16} color="#059669" /> Monte seu orçamento
@@ -835,6 +888,7 @@ export default function App() {
                       <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid #cbd5e1', textAlign: 'left' }}>
                         <th style={{ padding: '8px' }}>Produto</th>
                         <th style={{ padding: '8px' }}>Cor</th>
+                        <th style={{ padding: '8px' }}>Condição</th>
                         <th style={{ padding: '8px' }}>Qtd (KG)</th>
                         <th style={{ padding: '8px' }}>Preço/KG</th>
                         <th style={{ padding: '8px' }}>Subtotal</th>
@@ -846,6 +900,7 @@ export default function App() {
                         <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                           <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.nome} <span style={{ fontSize: '10px', color: '#64748b' }}>({item.marca.toUpperCase()})</span></td>
                           <td style={{ padding: '8px', color: '#475569' }}>{item.cor}</td>
+                          <td style={{ padding: '8px', fontSize: '11px', color: '#2563eb' }}>{getNomeFormaPagamento(item.formaPagamento)}</td>
                           <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.kg.toLocaleString('pt-BR')} kg</td>
                           <td style={{ padding: '8px' }}>{formatMoeda(item.precoUnitario)}</td>
                           <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>{formatMoeda(item.totalItem)}</td>
@@ -880,6 +935,7 @@ export default function App() {
               </>
             )}
 
+            {/* LAYOUT PARA GERAÇÃO DO PDF */}
             <div style={{ display: 'none' }}>
               <div ref={orcamentoPdfRef} style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#ffffff', color: '#1e293b' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #059669', paddingBottom: '12px', marginBottom: '15px' }}>
@@ -901,6 +957,7 @@ export default function App() {
                     <tr style={{ backgroundColor: '#059669', color: 'white', textAlign: 'left' }}>
                       <th style={{ padding: '6px 8px' }}>Item / Tecido</th>
                       <th style={{ padding: '6px 8px' }}>Cor</th>
+                      <th style={{ padding: '6px 8px' }}>Condição</th>
                       <th style={{ padding: '6px 8px' }}>Qtd (KG)</th>
                       <th style={{ padding: '6px 8px' }}>Preço/KG</th>
                       <th style={{ padding: '6px 8px', textAlign: 'right' }}>Subtotal</th>
@@ -911,6 +968,7 @@ export default function App() {
                       <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                         <td style={{ padding: '6px 8px', fontWeight: 'bold' }}>{item.nome} ({item.marca.toUpperCase()})</td>
                         <td style={{ padding: '6px 8px' }}>{item.cor}</td>
+                        <td style={{ padding: '6px 8px' }}>{getNomeFormaPagamento(item.formaPagamento)}</td>
                         <td style={{ padding: '6px 8px' }}>{item.kg.toLocaleString('pt-BR')} kg</td>
                         <td style={{ padding: '6px 8px' }}>{formatMoeda(item.precoUnitario)}</td>
                         <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{formatMoeda(item.totalItem)}</td>
@@ -930,28 +988,45 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL DE GESTÃO DE USUÁRIOS (ADMIN) */}
+      {/* MODAL DE GESTÃO DE USUÁRIOS E REGRAS DE PERMISSÃO (ADMIN) */}
       {isUsersModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px' }}>Gestão de Acessos</h3>
+              <h3 style={{ margin: 0, fontSize: '18px' }}>Gestão de Acessos e Permissões</h3>
               <button onClick={() => setIsUsersModalOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left' }}>
                   <th style={{ padding: '8px' }}>E-mail</th>
-                  <th style={{ padding: '8px' }}>Estado</th>
-                  <th style={{ padding: '8px' }}>Permissão</th>
+                  <th style={{ padding: '8px' }}>Status</th>
+                  <th style={{ padding: '8px' }}>Nível de Permissão</th>
                 </tr>
               </thead>
               <tbody>
                 {allProfiles.map(u => (
                   <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '8px' }}>{u.email}</td>
-                    <td style={{ padding: '8px' }}>{u.approved ? 'Aprovado' : 'Pendente'}</td>
-                    <td style={{ padding: '8px' }}>{u.role}</td>
+                    <td style={{ padding: '8px' }}>
+                      <button
+                        onClick={() => handleToggleApprove(u.id, u.approved)}
+                        style={{ backgroundColor: u.approved ? '#d1fae5' : '#fee2e2', color: u.approved ? '#065f46' : '#991b1b', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                      >
+                        {u.approved ? 'Aprovado' : 'Aprovar Accesso'}
+                      </button>
+                    </td>
+                    <td style={{ padding: '8px' }}>
+                      <select
+                        value={u.role || 'user'}
+                        onChange={(e) => handleUpdateRole(u.id, e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                      >
+                        <option value="user">Representante (Padrão)</option>
+                        <option value="loja">Loja (Ver 6 Preços)</option>
+                        <option value="admin">Administrador</option>
+                      </select>
+                    </td>
                   </tr>
                 ))}
               </tbody>
