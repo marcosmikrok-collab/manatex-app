@@ -82,7 +82,6 @@ export default function App() {
   })
   const [formCores, setFormCores] = useState([])
 
-  // REGRAS DE CÁLCULO AUTOMÁTICO DE PREÇOS (BASEADO NO À VISTA)
   const parseInputValue = (val) => {
     if (val === null || val === undefined || val === '') return null
     if (typeof val === 'number') return parseFloat(val.toFixed(2))
@@ -305,7 +304,6 @@ export default function App() {
     supabase.auth.signOut()
   }
 
-  // REGRAS DE VISIBILIDADE DE PREÇOS DE LOJA
   const canViewStorePrices = profile?.role === 'admin' || profile?.role === 'loja'
 
   const getPrecoPorFormaPagamento = (prod, forma) => {
@@ -534,8 +532,25 @@ export default function App() {
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <OfflineBanner />
+
+      {/* LOGOS DAS MARCAS LADO A LADO NO TOPO */}
+      <div style={{ width: '100%', maxWidth: '900px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <img 
+          src="https://manatex.com.br/wp-content/uploads/2023/04/logo-manatex.png" 
+          alt="Manatex" 
+          style={{ height: '40px', objectFit: 'contain' }} 
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+        <div style={{ width: '1px', height: '30px', backgroundColor: '#cbd5e1' }} />
+        <img 
+          src="https://msport.com.br/wp-content/uploads/2023/04/logo-msport.png" 
+          alt="M Sport" 
+          style={{ height: '40px', objectFit: 'contain' }} 
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      </div>
       
-      {/* HEADER PRINCIPAL COM CONTADORES E CONTROLE DE NÍVEIS DE ACESSO */}
+      {/* HEADER PRINCIPAL COM CONTADORES E BOTÃO ORÇAMENTO EM VERDE MANATEX */}
       <header style={{ width: '100%', maxWidth: '900px', backgroundColor: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', gap: '15px' }}>
           <div style={{ backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -555,7 +570,7 @@ export default function App() {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button 
             onClick={() => setIsOrcamentoOpen(true)} 
-            style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', boxShadow: '0 2px 5px rgba(37,99,235,0.3)' }}
+            style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', boxShadow: '0 2px 5px rgba(5,150,105,0.3)' }}
           >
             <Calculator size={16} /> Orçamento {itensOrcamento.length > 0 && `(${itensOrcamento.length})`}
           </button>
@@ -697,7 +712,7 @@ export default function App() {
         })}
       </div>
 
-      {/* MODAL / FICHA DETALHADA DO PRODUTO (REPRESENTANTE VS LOJA) */}
+      {/* MODAL / FICHA DETALHADA DO PRODUTO */}
       {selectedProductDetails && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', width: '100%', maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative' }}>
@@ -718,7 +733,6 @@ export default function App() {
             </h2>
             <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>{selectedProductDetails.composicao}</p>
 
-            {/* IMAGEM DA COR SELECIONADA */}
             {(selectedCorImagemUrl || selectedProductDetails.imagem_url) && (
               <div style={{ textAlign: 'center', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <img 
@@ -734,7 +748,6 @@ export default function App() {
               </div>
             )}
 
-            {/* PREÇOS PRINCIPAIS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
               <div style={{ backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
                 <span style={{ fontSize: '11px', color: '#166534', display: 'block' }}>À vista / kg</span>
@@ -746,7 +759,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* EXIBIÇÃO DOS 6 PREÇOS EXCLUSIVOS DE LOJA/ADMIN */}
             {canViewStorePrices && (
               <div style={{ backgroundColor: '#fdf2f8', border: '1px solid #fbcfe8', padding: '12px', borderRadius: '10px', marginBottom: '15px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#9d174d', display: 'block', marginBottom: '8px' }}>
@@ -763,7 +775,6 @@ export default function App() {
               </div>
             )}
 
-            {/* ESPECIFICAÇÕES TÉCNICAS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', color: '#334155', marginBottom: '20px', backgroundColor: '#fdf4ff', padding: '12px', borderRadius: '8px' }}>
               <div>Largura: <strong>{formatNumero(selectedProductDetails.largura, ' m')}</strong></div>
               <div>Gramatura: <strong>{formatNumero(selectedProductDetails.gramatura, ' g/m²')}</strong></div>
@@ -773,7 +784,6 @@ export default function App() {
               <div>Valor por m²: <strong>{formatMoeda(selectedProductDetails.valor_m2)}</strong></div>
             </div>
 
-            {/* CORES DO TECIDO */}
             {selectedProductDetails.produto_cores && selectedProductDetails.produto_cores.length > 0 && (
               <div style={{ marginBottom: '15px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '6px' }}>
@@ -802,7 +812,6 @@ export default function App() {
               </div>
             )}
 
-            {/* BLOCO DE MONTAGEM DO ORÇAMENTO */}
             <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '15px', marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Calculator size={16} color="#059669" /> Monte seu orçamento
@@ -860,7 +869,7 @@ export default function App() {
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
               <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Calculator size={22} color="#2563eb" /> Carrinho de Orçamentos
+                <Calculator size={22} color="#059669" /> Carrinho de Orçamentos
               </h3>
               <button onClick={() => setIsOrcamentoOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}><X size={22} /></button>
             </div>
@@ -900,7 +909,7 @@ export default function App() {
                         <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                           <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.nome} <span style={{ fontSize: '10px', color: '#64748b' }}>({item.marca.toUpperCase()})</span></td>
                           <td style={{ padding: '8px', color: '#475569' }}>{item.cor}</td>
-                          <td style={{ padding: '8px', fontSize: '11px', color: '#2563eb' }}>{getNomeFormaPagamento(item.formaPagamento)}</td>
+                          <td style={{ padding: '8px', fontSize: '11px', color: '#059669' }}>{getNomeFormaPagamento(item.formaPagamento)}</td>
                           <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.kg.toLocaleString('pt-BR')} kg</td>
                           <td style={{ padding: '8px' }}>{formatMoeda(item.precoUnitario)}</td>
                           <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>{formatMoeda(item.totalItem)}</td>
@@ -988,7 +997,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL DE GESTÃO DE USUÁRIOS E REGRAS DE PERMISSÃO (ADMIN) */}
+      {/* MODAL DE GESTÃO DE USUÁRIOS (ADMIN) */}
       {isUsersModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
           <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '85vh', overflowY: 'auto' }}>
