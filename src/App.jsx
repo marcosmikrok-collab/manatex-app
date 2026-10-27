@@ -533,15 +533,19 @@ export default function App() {
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <OfflineBanner />
 
-      {/* CABEÇALHO COM LOGOS EM TEXTO ESTILIZADO DE MARCA (Garante exibição perfeita) */}
+      {/* LOGOS OFICIAIS DAS MARCAS LADO A LADO NO TOPO */}
       <div style={{ width: '100%', maxWidth: '900px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '30px', marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <div style={{ fontSize: '22px', fontWeight: '900', color: '#059669', letterSpacing: '1px' }}>
-          MANATEX
-        </div>
-        <div style={{ width: '2px', height: '24px', backgroundColor: '#cbd5e1' }} />
-        <div style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', letterSpacing: '1px' }}>
-          M SPORT
-        </div>
+        <img 
+          src="https://manatexb2b.vtexassets.com/assets/vtex/assets-builder/manatexb2b.theme/0.0.107/logo/logo-manatex___9f9967acd4c31ae81563d1b029c0102d.png" 
+          alt="Manatex" 
+          style={{ height: '35px', objectFit: 'contain' }} 
+        />
+        <div style={{ width: '1px', height: '28px', backgroundColor: '#cbd5e1' }} />
+        <img 
+          src="https://manatexb2b.vtexassets.com/assets/vtex.files-provider/images/1cfec8ac-6368-450f-a9cb-b265ac8c9740___73510c07b9f578ce5173e8880190edd0.png" 
+          alt="M Sport" 
+          style={{ height: '35px', objectFit: 'contain' }} 
+        />
       </div>
       
       {/* HEADER PRINCIPAL COM CONTADORES E BOTÃO ORÇAMENTO EM VERDE MANATEX */}
