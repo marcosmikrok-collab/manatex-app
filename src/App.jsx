@@ -533,21 +533,15 @@ export default function App() {
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <OfflineBanner />
 
-      {/* LOGOS DAS MARCAS LADO A LADO NO TOPO */}
-      <div style={{ width: '100%', maxWidth: '900px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <img 
-          src="https://manatex.com.br/wp-content/uploads/2023/04/logo-manatex.png" 
-          alt="Manatex" 
-          style={{ height: '40px', objectFit: 'contain' }} 
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
-        <div style={{ width: '1px', height: '30px', backgroundColor: '#cbd5e1' }} />
-        <img 
-          src="https://msport.com.br/wp-content/uploads/2023/04/logo-msport.png" 
-          alt="M Sport" 
-          style={{ height: '40px', objectFit: 'contain' }} 
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
+      {/* CABEÇALHO COM LOGOS EM TEXTO ESTILIZADO DE MARCA (Garante exibição perfeita) */}
+      <div style={{ width: '100%', maxWidth: '900px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '30px', marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <div style={{ fontSize: '22px', fontWeight: '900', color: '#059669', letterSpacing: '1px' }}>
+          MANATEX
+        </div>
+        <div style={{ width: '2px', height: '24px', backgroundColor: '#cbd5e1' }} />
+        <div style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', letterSpacing: '1px' }}>
+          M SPORT
+        </div>
       </div>
       
       {/* HEADER PRINCIPAL COM CONTADORES E BOTÃO ORÇAMENTO EM VERDE MANATEX */}
