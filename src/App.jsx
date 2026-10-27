@@ -60,6 +60,7 @@ export default function App() {
   // FICHA DO PRODUTO SELECIONADO
   const [selectedProductDetails, setSelectedProductDetails] = useState(null)
   const [selectedCorOrcamento, setSelectedCorOrcamento] = useState('')
+  const [selectedCorImagemUrl, setSelectedCorImagemUrl] = useState('')
   const [qtdKgOrcamento, setQtdKgOrcamento] = useState('')
   const [formaPagamentoOrcamento, setFormaPagamentoOrcamento] = useState('a_vista')
   
@@ -287,7 +288,6 @@ export default function App() {
 
   const canViewStorePrices = profile?.role === 'admin' || profile?.role === 'loja'
 
-  // CÁLCULO DE PREÇOS PARA ORÇAMENTO
   const getPrecoPorFormaPagamento = (prod, forma) => {
     if (!prod) return 0
     const aVista = prod.a_vista || 0
@@ -311,7 +311,6 @@ export default function App() {
     }
   }
 
-  // ADICIONAR AO ORÇAMENTO DIRETAMENTE DO CARD / FICHA
   const handleAddDiretoDoCard = () => {
     if (!selectedProductDetails) return
     const kg = parseFloat(qtdKgOrcamento.replace(',', '.'))
@@ -339,6 +338,7 @@ export default function App() {
     setSelectedProductDetails(null)
     setQtdKgOrcamento('')
     setSelectedCorOrcamento('')
+    setSelectedCorImagemUrl('')
   }
 
   const handleRemoveItemOrcamento = (id) => {
@@ -347,20 +347,6 @@ export default function App() {
 
   const totalGeralOrcamento = itensOrcamento.reduce((acc, curr) => acc + curr.totalItem, 0)
   const totalKgOrcamento = itensOrcamento.reduce((acc, curr) => acc + curr.kg, 0)
-
-  const getNomeFormaPagamento = (forma) => {
-    switch (forma) {
-      case 'a_vista': return 'À Vista'
-      case 'a_prazo': return 'À Prazo'
-      case 'atacado_debito': return 'Atacado - Débito'
-      case 'atacado_credito': return 'Atacado - Crédito'
-      case 'varejo_avista': return 'Varejo - À Vista'
-      case 'varejo_prazo': return 'Varejo - Prazo'
-      case 'meia_avista': return 'Meia Peça - À Vista'
-      case 'meia_prazo': return 'Meia Peça - Prazo'
-      default: return 'À Vista'
-    }
-  }
 
   const handleExportOrcamentoPDF = async () => {
     const element = orcamentoPdfRef.current
@@ -411,16 +397,11 @@ export default function App() {
     }
   }
 
-  // FILTRAGEM E ORDENAÇÃO UNIFICADA
   const filteredProducts = allProducts.filter(p => {
-    // 1. Filtro por marca (abas)
     if (brandFilter === 'manatex' && !p.marca?.toLowerCase().includes('manatex')) return false
     if (brandFilter === 'msport' && !p.marca?.toLowerCase().includes('msport')) return false
-
-    // 2. Filtro por composição
     if (composicaoFilter !== 'todas' && p.composicao?.toLowerCase() !== composicaoFilter.toLowerCase()) return false
 
-    // 3. Busca múltipla por vírgula
     if (globalSearchTerm.trim()) {
       const termos = globalSearchTerm.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
       if (termos.length > 0) {
@@ -444,7 +425,6 @@ export default function App() {
     return 0
   })
 
-  // Listas para contadores e selects
   const totalCount = allProducts.length
   const manatexCount = allProducts.filter(p => p.marca?.toLowerCase().includes('manatex')).length
   const msportCount = allProducts.filter(p => p.marca?.toLowerCase().includes('msport')).length
@@ -520,7 +500,7 @@ export default function App() {
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <OfflineBanner />
       
-      {/* HEADER PRINCIPAL COM CONTADORES (Inspirado na Imagem 1) */}
+      {/* HEADER PRINCIPAL COM CONTADORES */}
       <header style={{ width: '100%', maxWidth: '900px', backgroundColor: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', gap: '15px' }}>
           <div style={{ backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -568,7 +548,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* BARRA DE PESQUISA, ABAS DE MARCA E FILTROS (Inspirado na Imagem 1) */}
+      {/* BARRA DE PESQUISA, ABAS DE MARCA E FILTROS */}
       <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
         
         <div style={{ position: 'relative', width: '100%' }}>
@@ -582,7 +562,6 @@ export default function App() {
           />
         </div>
 
-        {/* BOTÕES DE FILTRO POR MARCA: TODAS - MANATEX - M SPORT */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', backgroundColor: '#e2e8f0', padding: '4px', borderRadius: '10px' }}>
           <button
             onClick={() => setBrandFilter('todas')}
@@ -604,7 +583,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* FILTRO DE COMPOSIÇÃO E ORDENAÇÃO */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           <select
             value={composicaoFilter}
@@ -631,14 +609,18 @@ export default function App() {
 
       </div>
 
-      {/* LISTAGEM DOS CARDS DE PRODUTOS */}
+      {/* LISTAGEM DOS CARDS DE PRODUTOS COM IMAGEM */}
       <div style={{ width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
         {filteredProducts.map((p) => {
           const isMana = p.marca?.toLowerCase().includes('manatex')
           return (
             <div 
               key={p.id} 
-              onClick={() => { setSelectedProductDetails(p); setSelectedCorOrcamento(p.produto_cores?.[0]?.nome_cor || '') }}
+              onClick={() => {
+                setSelectedProductDetails(p)
+                setSelectedCorOrcamento(p.produto_cores?.[0]?.nome_cor || '')
+                setSelectedCorImagemUrl(p.produto_cores?.[0]?.imagem_url || p.imagem_url || '')
+              }}
               style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', cursor: 'pointer', transition: 'transform 0.1s', position: 'relative' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -648,7 +630,14 @@ export default function App() {
                 </span>
               </div>
 
-              <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 15px 0' }}>{p.composicao || 'Composição não informada'}</p>
+              <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 12px 0' }}>{p.composicao || 'Composição não informada'}</p>
+
+              {/* IMAGEM DO PRODUTO NO CARD */}
+              {p.imagem_url && (
+                <div style={{ textAlign: 'center', margin: '12px 0', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px' }}>
+                  <img src={p.imagem_url} alt={p.nome} style={{ maxHeight: '140px', maxWidth: '100%', objectFit: 'contain', borderRadius: '6px' }} />
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '12px 0', marginBottom: '12px' }}>
                 <div>
@@ -674,7 +663,7 @@ export default function App() {
         })}
       </div>
 
-      {/* MODAL / FICHA DETALHADA DO PRODUTO (Inspirado nas Imagens 2 e 3) */}
+      {/* MODAL / FICHA DETALHADA COM IMAGEM DINÂMICA DA COR */}
       {selectedProductDetails && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', width: '100%', maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative' }}>
@@ -695,7 +684,22 @@ export default function App() {
             </h2>
             <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '15px' }}>{selectedProductDetails.composicao}</p>
 
-            {/* PREÇOS EM DESTAQUE */}
+            {/* IMAGEM DINÂMICA (Muda ao clicar na cor ou exibe a principal) */}
+            {(selectedCorImagemUrl || selectedProductDetails.imagem_url) && (
+              <div style={{ textAlign: 'center', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <img 
+                  src={selectedCorImagemUrl || selectedProductDetails.imagem_url} 
+                  alt={selectedProductDetails.nome} 
+                  style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} 
+                />
+                {selectedCorOrcamento && (
+                  <span style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#059669', marginTop: '6px' }}>
+                    Cor selecionada: {selectedCorOrcamento}
+                  </span>
+                )}
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
               <div style={{ backgroundColor: '#f0fdf4', padding: '12px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
                 <span style={{ fontSize: '11px', color: '#166534', display: 'block' }}>À vista / kg</span>
@@ -707,7 +711,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* ESPECIFICAÇÕES TÉCNICAS */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', color: '#334155', marginBottom: '20px', backgroundColor: '#fdf4ff', padding: '12px', borderRadius: '8px' }}>
               <div>Largura: <strong>{formatNumero(selectedProductDetails.largura, ' m')}</strong></div>
               <div>Gramatura: <strong>{formatNumero(selectedProductDetails.gramatura, ' g/m²')}</strong></div>
@@ -717,7 +720,36 @@ export default function App() {
               <div>Valor por m²: <strong>{formatMoeda(selectedProductDetails.valor_m2)}</strong></div>
             </div>
 
-            {/* BLOCO: MONTE SEU ORÇAMENTO (Inspirado na Imagem 2) */}
+            {/* SELEÇÃO DE CORES (Atualiza a imagem ao clicar) */}
+            {selectedProductDetails.produto_cores && selectedProductDetails.produto_cores.length > 0 && (
+              <div style={{ marginBottom: '15px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                  Cores do tecido ({selectedProductDetails.produto_cores.length} disponíveis) — Clique para ver a foto:
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
+                  {selectedProductDetails.produto_cores.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCorOrcamento(c.nome_cor)
+                        setSelectedCorImagemUrl(c.imagem_url || selectedProductDetails.imagem_url || '')
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '6px',
+                        border: selectedCorOrcamento === c.nome_cor ? '2px solid #059669' : '1px solid #cbd5e1',
+                        backgroundColor: selectedCorOrcamento === c.nome_cor ? '#f0fdf4' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '11px'
+                      }}
+                    >
+                      <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: c.codigo_hex || '#000', border: '1px solid #94a3b8' }} />
+                      <span style={{ fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome_cor}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* BLOCO ORÇAMENTO */}
             <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '12px', padding: '15px', marginBottom: '20px' }}>
               <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Calculator size={16} color="#059669" /> Monte seu orçamento
@@ -755,32 +787,6 @@ export default function App() {
                   )}
                 </select>
               </div>
-
-              {/* CORES DO TECIDO (Inspirado na Imagem 3) */}
-              {selectedProductDetails.produto_cores && selectedProductDetails.produto_cores.length > 0 && (
-                <div style={{ marginBottom: '15px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                    Selecione a cor ({selectedProductDetails.produto_cores.length} disponíveis):
-                  </span>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', maxHeight: '120px', overflowY: 'auto' }}>
-                    {selectedProductDetails.produto_cores.map(c => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => setSelectedCorOrcamento(c.nome_cor)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '6px',
-                          border: selectedCorOrcamento === c.nome_cor ? '2px solid #059669' : '1px solid #cbd5e1',
-                          backgroundColor: selectedCorOrcamento === c.nome_cor ? '#f0fdf4' : 'white', cursor: 'pointer', textAlign: 'left', fontSize: '11px'
-                        }}
-                      >
-                        <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: c.codigo_hex || '#000', border: '1px solid #94a3b8' }} />
-                        <span style={{ fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome_cor}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               <button
                 onClick={handleAddDiretoDoCard}
@@ -874,7 +880,6 @@ export default function App() {
               </>
             )}
 
-            {/* LAYOUT OCULTO PARA GERAÇÃO DO PDF */}
             <div style={{ display: 'none' }}>
               <div ref={orcamentoPdfRef} style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#ffffff', color: '#1e293b' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #059669', paddingBottom: '12px', marginBottom: '15px' }}>
