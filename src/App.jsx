@@ -56,6 +56,20 @@ export default function App() {
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false)
   const [allProfiles, setAllProfiles] = useState([])
 
+  // MODAL CADASTRO / EDIÇÃO DE PRODUTOS (ADMIN)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [formData, setFormData] = useState({
+    nome: '', marca: 'manatex', a_vista: '', a_prazo: '', 
+    atacado_cartao_debito: '', atacado_cartao_credito: '', 
+    varejo_avista_debito: '', varejo_prazo_credito: '',
+    meia_peca_avista_debito: '', meia_peca_prazo_credito: '',
+    valor_m: '', valor_m2: '',
+    largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
+    descricao: '', imagem_url: ''
+  })
+  const [formCores, setFormCores] = useState([]) // Array de { nome_cor, codigo_hex, imagem_url }
+
   // FICHA DO PRODUTO SELECIONADA
   const [selectedProductDetails, setSelectedProductDetails] = useState(null)
   const [selectedCorOrcamento, setSelectedCorOrcamento] = useState('')
@@ -134,6 +148,36 @@ export default function App() {
       valorM, 
       valorM2 
     }
+  }
+
+  const handleAVistaChange = (e) => {
+    const novoAVista = e.target.value
+    const calc = recalcularValores(novoAVista, formData.rendimento_m, formData.rendimento_m2)
+    setFormData((prev) => ({ 
+      ...prev, 
+      a_vista: novoAVista, 
+      a_prazo: calc.aPrazo, 
+      atacado_cartao_debito: calc.atacadoCartaoDebito, 
+      atacado_cartao_credito: calc.atacadoCartaoCredito, 
+      varejo_avista_debito: calc.varejoAvistaDebito,
+      varejo_prazo_credito: calc.varejoPrazoCredito,
+      meia_peca_avista_debito: calc.meiaPecaAvistaDebito,
+      meia_peca_prazo_credito: calc.meiaPecaPrazoCredito,
+      valor_m: calc.valorM, 
+      valor_m2: calc.valorM2 
+    }))
+  }
+
+  const handleRendimentoMChange = (e) => {
+    const novoRendM = e.target.value
+    const { valorM } = recalcularValores(formData.a_vista, novoRendM, formData.rendimento_m2)
+    setFormData((prev) => ({ ...prev, rendimento_m: novoRendM, valor_m: valorM }))
+  }
+
+  const handleRendimentoM2Change = (e) => {
+    const novoRendM2 = e.target.value
+    const { valorM2 } = recalcularValores(formData.a_vista, formData.rendimento_m, novoRendM2)
+    setFormData((prev) => ({ ...prev, rendimento_m2: novoRendM2, valor_m2: valorM2 }))
   }
 
   useEffect(() => {
@@ -287,6 +331,112 @@ export default function App() {
       case 'meia_prazo': return prod.meia_peca_prazo_credito || (aVista * 1.15 * 1.06)
       default: return aVista
     }
+  }
+
+  const handleSaveProduct = async (e) => {
+    e.preventDefault()
+    if (profile?.role !== 'admin') return
+
+    const productPayload = {
+      nome: formData.nome,
+      marca: formData.marca,
+      a_vista: parseInputValue(formData.a_vista),
+      a_prazo: parseInputValue(formData.a_prazo),
+      atacado_cartao_debito: parseInputValue(formData.atacado_cartao_debito),
+      atacado_cartao_credito: parseInputValue(formData.atacado_cartao_credito),
+      varejo_avista_debito: parseInputValue(formData.varejo_avista_debito),
+      varejo_prazo_credito: parseInputValue(formData.varejo_prazo_credito),
+      meia_peca_avista_debito: parseInputValue(formData.meia_peca_avista_debito),
+      meia_peca_prazo_credito: parseInputValue(formData.meia_peca_prazo_credito),
+      valor_m: parseInputValue(formData.valor_m),
+      valor_m2: parseInputValue(formData.valor_m2),
+      largura: parseInputValue(formData.largura),
+      gramatura: parseInputValue(formData.gramatura),
+      rendimento_m: parseInputValue(formData.rendimento_m),
+      rendimento_m2: parseInputValue(formData.rendimento_m2),
+      composicao: formData.composicao,
+      descricao: formData.descricao,
+      imagem_url: formData.imagem_url
+    }
+
+    try {
+      let productId = editingId
+
+      if (editingId) {
+        const { error } = await supabase.from('produtos').update(productPayload).eq('id', editingId)
+        if (error) throw error
+      } else {
+        const { data, error } = await supabase.from('produtos').insert([productPayload]).select()
+        if (error) throw error
+        if (data && data[0]) productId = data[0].id
+      }
+
+      // Atualizar cores
+      if (productId) {
+        if (editingId) {
+          await supabase.from('produto_cores').delete().eq('produto_id', productId)
+        }
+        if (formCores.length > 0) {
+          const coresPayload = formCores.map(c => ({
+            produto_id: productId,
+            nome_cor: c.nome_cor,
+            codigo_hex: c.codigo_hex || '#000000',
+            imagem_url: c.imagem_url || ''
+          }))
+          await supabase.from('produto_cores').insert(coresPayload)
+        }
+      }
+
+      alert('Produto salvo com sucesso!')
+      setIsModalOpen(false)
+      setEditingId(null)
+      fetchAllProducts()
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao salvar produto.')
+    }
+  }
+
+  const handleDeleteProduct = async (id) => {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) return
+    try {
+      await supabase.from('produto_cores').delete().eq('produto_id', id)
+      const { error } = await supabase.from('produtos').delete().eq('id', id)
+      if (error) throw error
+      alert('Produto excluído!')
+      setSelectedProductDetails(null)
+      fetchAllProducts()
+    } catch (err) {
+      alert('Erro ao excluir produto.')
+    }
+  }
+
+  const handleOpenEditProduct = (p) => {
+    setEditingId(p.id)
+    setFormData({
+      nome: p.nome || '',
+      marca: p.marca || 'manatex',
+      a_vista: p.a_vista !== null ? p.a_vista.toString().replace('.', ',') : '',
+      a_prazo: p.a_prazo !== null ? p.a_prazo.toString().replace('.', ',') : '',
+      atacado_cartao_debito: p.atacado_cartao_debito !== null ? p.atacado_cartao_debito.toString().replace('.', ',') : '',
+      atacado_cartao_credito: p.atacado_cartao_credito !== null ? p.atacado_cartao_credito.toString().replace('.', ',') : '',
+      varejo_avista_debito: p.varejo_avista_debito !== null ? p.varejo_avista_debito.toString().replace('.', ',') : '',
+      varejo_prazo_credito: p.varejo_prazo_credito !== null ? p.varejo_prazo_credito.toString().replace('.', ',') : '',
+      meia_peca_avista_debito: p.meia_peca_avista_debito !== null ? p.meia_peca_avista_debito.toString().replace('.', ',') : '',
+      meia_peca_prazo_credito: p.meia_peca_prazo_credito !== null ? p.meia_peca_prazo_credito.toString().replace('.', ',') : '',
+      valor_m: p.valor_m !== null ? p.valor_m.toString().replace('.', ',') : '',
+      valor_m2: p.valor_m2 !== null ? p.valor_m2.toString().replace('.', ',') : '',
+      largura: p.largura !== null ? p.largura.toString().replace('.', ',') : '',
+      gramatura: p.gramatura !== null ? p.gramatura.toString().replace('.', ',') : '',
+      rendimento_m: p.rendimento_m !== null ? p.rendimento_m.toString().replace('.', ',') : '',
+      rendimento_m2: p.rendimento_m2 !== null ? p.rendimento_m2.toString().replace('.', ',') : '',
+      composicao: p.composicao || '',
+      descricao: p.descricao || '',
+      imagem_url: p.imagem_url || ''
+    })
+    setFormCores(p.produto_cores ? p.produto_cores.map(c => ({ nome_cor: c.nome_cor, codigo_hex: c.codigo_hex, imagem_url: c.imagem_url })) : [])
+    setSelectedProductDetails(null)
+    setIsModalOpen(true)
   }
 
   const handleAddDiretoDoCard = () => {
@@ -578,7 +728,12 @@ export default function App() {
                 <Users size={16} /> Usuários
               </button>
               <button 
-                onClick={() => { setEditingId(null); setFormData({ nome: '', marca: 'manatex', a_vista: '', a_prazo: '', atacado_cartao_debito: '', atacado_cartao_credito: '', varejo_avista_debito: '', varejo_prazo_credito: '', meia_peca_avista_debito: '', meia_peca_prazo_credito: '', valor_m: '', valor_m2: '', largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '', descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: '' }); setFormCores([]); setIsModalOpen(true) }} 
+                onClick={() => { 
+                  setEditingId(null)
+                  setFormData({ nome: '', marca: 'manatex', a_vista: '', a_prazo: '', atacado_cartao_debito: '', atacado_cartao_credito: '', varejo_avista_debito: '', varejo_prazo_credito: '', meia_peca_avista_debito: '', meia_peca_prazo_credito: '', valor_m: '', valor_m2: '', largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '', descricao: '', imagem_url: '' })
+                  setFormCores([])
+                  setIsModalOpen(true) 
+                }} 
                 style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
               >
                 <Plus size={16} /> Novo
@@ -669,9 +824,19 @@ export default function App() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                 <h3 style={{ margin: 0, fontSize: '20px', color: '#0f172a', fontWeight: 'bold' }}>{p.nome?.toUpperCase()}</h3>
-                <span style={{ backgroundColor: isMana ? '#d1fae5' : '#f1f5f9', color: isMana ? '#065f46' : '#111827', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                  {p.marca}
-                </span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ backgroundColor: isMana ? '#d1fae5' : '#f1f5f9', color: isMana ? '#065f46' : '#111827', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                    {p.marca}
+                  </span>
+                  {profile?.role === 'admin' && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleOpenEditProduct(p) }}
+                      style={{ backgroundColor: '#e0f2fe', color: '#0284c7', border: 'none', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
+                    >
+                      Editar
+                    </button>
+                  )}
+                </div>
               </div>
 
               <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 12px 0' }}>{p.composicao || 'Composição não informada'}</p>
@@ -718,9 +883,17 @@ export default function App() {
               <X size={18} />
             </button>
 
-            <span style={{ backgroundColor: '#f1f5f9', color: '#334155', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', display: 'inline-block', marginBottom: '10px', textTransform: 'uppercase' }}>
-              {selectedProductDetails.marca}
-            </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ backgroundColor: '#f1f5f9', color: '#334155', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                {selectedProductDetails.marca}
+              </span>
+              {profile?.role === 'admin' && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => handleOpenEditProduct(selectedProductDetails)} style={{ backgroundColor: '#fef08a', color: '#854d0e', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>Editar</button>
+                  <button onClick={() => handleDeleteProduct(selectedProductDetails.id)} style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: 'none', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>Excluir</button>
+                </div>
+              )}
+            </div>
 
             <h2 style={{ fontSize: '24px', color: '#0f172a', margin: '0 0 5px 0', fontWeight: 'bold' }}>
               {selectedProductDetails.nome?.toUpperCase()}
@@ -856,7 +1029,154 @@ export default function App() {
         </div>
       )}
 
-      {/* TELA DE ORÇAMENTO (CARRINHO EXATAMENTE IGUAL ÀS IMAGENS RECENTES) */}
+      {/* MODAL DE CADASTRO / EDIÇÃO DE PRODUTO (ADMIN COM FÓRMULAS AUTOMÁTICAS E CORES) */}
+      {isModalOpen && profile?.role === 'admin' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100, padding: '15px' }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative' }}>
+            
+            <button 
+              onClick={() => setIsModalOpen(false)} 
+              style={{ position: 'absolute', top: '20px', right: '20px', backgroundColor: '#e0f2fe', color: '#0284c7', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}
+            >
+              <X size={18} />
+            </button>
+
+            <h2 style={{ fontSize: '20px', color: '#0f172a', margin: '0 0 15px 0', fontWeight: 'bold' }}>
+              {editingId ? 'Editar Produto' : 'Cadastrar Novo Produto'}
+            </h2>
+
+            <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Nome do Tecido</label>
+                  <input type="text" required value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Marca</label>
+                  <select value={formData.marca} onChange={e => setFormData({...formData, marca: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: 'white' }}>
+                    <option value="manatex">Manatex</option>
+                    <option value="m sport">M Sport</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Composição</label>
+                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} placeholder="Ex: 90% Poliamida, 10% Elastano" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* SEÇÃO DE CÁLCULO AUTOMÁTICO */}
+              <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '15px', borderRadius: '10px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#166534', display: 'block', marginBottom: '10px' }}>
+                  Preços e Fórmulas Automáticas (Altere o À Vista/KG para recalcular os demais):
+                </span>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#059669', marginBottom: '4px' }}>Preço À Vista / KG (Base)</label>
+                    <input type="text" value={formData.a_vista} onChange={handleAVistaChange} placeholder="Ex: 50,00" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #059669', backgroundColor: 'white', boxSizing: 'border-box', fontWeight: 'bold' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Preço À Prazo / KG (+6%)</label>
+                    <input type="text" value={formData.a_prazo} onChange={e => setFormData({...formData, a_prazo: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', fontSize: '11px', color: '#475569' }}>
+                  <div>Atacado Débito: <strong>{formData.atacado_cartao_debito || '-'}</strong></div>
+                  <div>Atacado Crédito: <strong>{formData.atacado_cartao_credito || '-'}</strong></div>
+                  <div>Varejo À Vista: <strong>{formData.varejo_avista_debito || '-'}</strong></div>
+                  <div>Varejo Prazo: <strong>{formData.varejo_prazo_credito || '-'}</strong></div>
+                </div>
+              </div>
+
+              {/* RENDIMENTOS E MEDIDAS */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Largura (m)</label>
+                  <input type="text" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Gramatura</label>
+                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Rend. M/Kg</label>
+                  <input type="text" value={formData.rendimento_m} onChange={handleRendimentoMChange} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Rend. M²/Kg</label>
+                  <input type="text" value={formData.rendimento_m2} onChange={handleRendimentoM2Change} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>URL da Imagem Principal do Produto</label>
+                <input type="text" value={formData.imagem_url} onChange={e => setFormData({...formData, imagem_url: e.target.value})} placeholder="https://..." style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* GERENCIAMENTO DE CORES DO PRODUTO */}
+              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>Cores Disponíveis ({formCores.length})</span>
+                  <button
+                    type="button"
+                    onClick={() => setFormCores([...formCores, { nome_cor: '', codigo_hex: '#059669', imagem_url: '' }])}
+                    style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    + Adicionar Cor
+                  </button>
+                </div>
+
+                {formCores.map((cor, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                    <input
+                      type="color"
+                      value={cor.codigo_hex || '#059669'}
+                      onChange={e => {
+                        const newCores = [...formCores]
+                        newCores[idx].codigo_hex = e.target.value
+                        setFormCores(newCores)
+                      }}
+                      style={{ width: '32px', height: '32px', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'none' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Nome da cor (ex: Azul Marinho)"
+                      value={cor.nome_cor}
+                      onChange={e => {
+                        const newCores = [...formCores]
+                        newCores[idx].nome_cor = e.target.value
+                        setFormCores(newCores)
+                      }}
+                      style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px', backgroundColor: 'white' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormCores(formCores.filter((_, i) => i !== idx))}
+                      style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: 'none', padding: '8px', borderRadius: '6px', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="submit"
+                style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', marginTop: '10px' }}
+              >
+                Salvar Produto
+              </button>
+
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* TELA DE ORÇAMENTO (CARRINHO) */}
       {isOrcamentoOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '20px', width: '100%', maxWidth: '520px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 15px 35px rgba(0,0,0,0.2)', position: 'relative' }}>
@@ -922,7 +1242,6 @@ export default function App() {
               </select>
             </div>
 
-            {/* LISTAGEM DE ITENS EM CARDS INDIVIDUAIS */}
             {itensOrcamento.length === 0 ? (
               <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', margin: '20px 0' }}>
                 Nenhum produto no orçamento.
@@ -973,7 +1292,6 @@ export default function App() {
               </div>
             )}
 
-            {/* CAIXA DE TOTAL DO ORÇAMENTO */}
             <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
                 <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#166534', display: 'block' }}>Total do orçamento</span>
@@ -992,11 +1310,6 @@ export default function App() {
                 style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box', backgroundColor: 'white', resize: 'vertical' }}
               />
             </div>
-
-            <p style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.4', marginBottom: '20px' }}>
-              Adicione quantas cores quiser deste produto, informando um peso para cada cor. A cartela traz sugestões; você também pode digitar outras cores, sujeitas à confirmação comercial.<br/><br/>
-              Frete, estoque, entrega e validade a confirmar. Cálculo com preço/kg arredondado a duas casas decimais.
-            </p>
 
             <button
               onClick={handleExportOrcamentoPDF}
