@@ -1329,11 +1329,11 @@ export default function App() {
               <div ref={orcamentoPdfRef} style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#ffffff', color: '#1e293b' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #059669', paddingBottom: '12px', marginBottom: '15px' }}>
                   <div>
-                    <h1 style={{ margin: 0, fontSize: '22px', color: '#059669', fontWeight: 'bold' }}>ORÇAMENTO DE VENDA</h1>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>Consultar vigência da tabela</p>
+                    <h1 style={{ margin: 0, fontSize: '36px', color: '#059669', fontWeight: 'bold' }}>https://manatexb2b.vtexassets.com/assets/vtex/assets-builder/manatexb2b.theme/0.0.107/logo/logo-manatex___9f9967acd4c31ae81563d1b029c0102d.png</h1>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '22px', color: '#f8fafc' }}>Orçamento</p>
                   </div>
                   <div style={{ textAlign: 'right', fontSize: '11px', color: '#64748b' }}>
-                    <div>Data: {new Date().toLocaleDateString('pt-BR')}</div>
+                    <div>Emissão: {new Date().toLocaleDateString('pt-BR')}</div>
                   </div>
                 </div>
 
