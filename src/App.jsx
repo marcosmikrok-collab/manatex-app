@@ -688,7 +688,7 @@ export default function App() {
         />
         <div style={{ width: '1px', height: '28px', backgroundColor: '#cbd5e1' }} />
         <img 
-          src="https://manatexb2b.vtexassets.com/assets/vtex.files-provider/images/1cfec8ac-6368-450f-a9cb-b265ac8c9740___73510c07b9f578ce5173e8880190edd0.png" 
+          src="msports.jpg" 
           alt="M Sport" 
           style={{ height: '35px', objectFit: 'contain' }} 
         />
