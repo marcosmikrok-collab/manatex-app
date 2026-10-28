@@ -1330,7 +1330,7 @@ export default function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #059669', paddingBottom: '12px', marginBottom: '15px' }}>
                   <div>
                     <h1 style={{ margin: 0, fontSize: '22px', color: '#059669', fontWeight: 'bold' }}>ORÇAMENTO DE VENDA</h1>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>Catálogo Unificado Manatex & M Sport</p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>Consultar vigência da tabela</p>
                   </div>
                   <div style={{ textAlign: 'right', fontSize: '11px', color: '#64748b' }}>
                     <div>Data: {new Date().toLocaleDateString('pt-BR')}</div>
