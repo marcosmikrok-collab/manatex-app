@@ -56,31 +56,21 @@ export default function App() {
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false)
   const [allProfiles, setAllProfiles] = useState([])
 
-  // FICHA DO PRODUTO E MONTAGEM DE ORÇAMENTO
+  // FICHA DO PRODUTO SELECIONADA
   const [selectedProductDetails, setSelectedProductDetails] = useState(null)
   const [selectedCorOrcamento, setSelectedCorOrcamento] = useState('')
   const [selectedCorImagemUrl, setSelectedCorImagemUrl] = useState('')
   const [qtdKgOrcamento, setQtdKgOrcamento] = useState('')
   const [formaPagamentoOrcamento, setFormaPagamentoOrcamento] = useState('a_vista')
   
+  // TELA DE ORÇAMENTO (CARRINHO)
   const [isOrcamentoOpen, setIsOrcamentoOpen] = useState(false)
   const [clienteNome, setClienteNome] = useState('')
+  const [representanteNome, setRepresentanteNome] = useState('')
+  const [formaPagamentoGeral, setFormaPagamentoGeral] = useState('a_vista')
+  const [observacoesOrcamento, setObservacoesOrcamento] = useState('')
   const [itensOrcamento, setItensOrcamento] = useState([])
   const orcamentoPdfRef = useRef(null)
-
-  // MODAL CADASTRO / EDIÇÃO DE PRODUTOS (ADMIN)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [formData, setFormData] = useState({
-    nome: '', marca: 'manatex', a_vista: '', a_prazo: '', 
-    atacado_cartao_debito: '', atacado_cartao_credito: '', 
-    varejo_avista_debito: '', varejo_prazo_credito: '',
-    meia_peca_avista_debito: '', meia_peca_prazo_credito: '',
-    valor_m: '', valor_m2: '',
-    largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
-    descricao: '', imagem_url: '', tecnologias: '', conforto_text: '', versatil_text: ''
-  })
-  const [formCores, setFormCores] = useState([])
 
   const parseInputValue = (val) => {
     if (val === null || val === undefined || val === '') return null
@@ -144,36 +134,6 @@ export default function App() {
       valorM, 
       valorM2 
     }
-  }
-
-  const handleAVistaChange = (e) => {
-    const novoAVista = e.target.value
-    const calc = recalcularValores(novoAVista, formData.rendimento_m, formData.rendimento_m2)
-    setFormData((prev) => ({ 
-      ...prev, 
-      a_vista: novoAVista, 
-      a_prazo: calc.aPrazo, 
-      atacado_cartao_debito: calc.atacadoCartaoDebito, 
-      atacado_cartao_credito: calc.atacadoCartaoCredito, 
-      varejo_avista_debito: calc.varejoAvistaDebito,
-      varejo_prazo_credito: calc.varejoPrazoCredito,
-      meia_peca_avista_debito: calc.meiaPecaAvistaDebito,
-      meia_peca_prazo_credito: calc.meiaPecaPrazoCredito,
-      valor_m: calc.valorM, 
-      valor_m2: calc.valorM2 
-    }))
-  }
-
-  const handleRendimentoMChange = (e) => {
-    const novoRendM = e.target.value
-    const { valorM } = recalcularValores(formData.a_vista, novoRendM, formData.rendimento_m2)
-    setFormData((prev) => ({ ...prev, rendimento_m: novoRendM, valor_m: valorM }))
-  }
-
-  const handleRendimentoM2Change = (e) => {
-    const novoRendM2 = e.target.value
-    const { valorM2 } = recalcularValores(formData.a_vista, formData.rendimento_m, novoRendM2)
-    setFormData((prev) => ({ ...prev, rendimento_m2: novoRendM2, valor_m2: valorM2 }))
   }
 
   useEffect(() => {
@@ -345,39 +305,73 @@ export default function App() {
       produtoId: selectedProductDetails.id,
       nome: selectedProductDetails.nome,
       marca: selectedProductDetails.marca,
-      cor: selectedCorOrcamento || 'Padrão',
+      cor: selectedCorOrcamento || '',
       kg: kg,
       formaPagamento: formaPagamentoOrcamento,
       precoUnitario: precoUnit,
-      totalItem: total
+      produtoRef: selectedProductDetails
     }
 
     setItensOrcamento([...itensOrcamento, novoItem])
-    alert('Item adicionado ao orçamento!')
     setSelectedProductDetails(null)
     setQtdKgOrcamento('')
     setSelectedCorOrcamento('')
     setSelectedCorImagemUrl('')
+    setIsOrcamentoOpen(true)
+  }
+
+  const handleUpdateItemKg = (id, novoKgStr) => {
+    const kg = parseFloat(novoKgStr.replace(',', '.'))
+    setItensOrcamento(itensOrcamento.map(item => {
+      if (item.id === id) {
+        const valKg = isNaN(kg) ? 0 : kg
+        return { ...item, kg: novoKgStr, totalItem: valKg * item.precoUnitario }
+      }
+      return item
+    }))
+  }
+
+  const handleUpdateItemCor = (id, novaCor) => {
+    setItensOrcamento(itensOrcamento.map(item => {
+      if (item.id === id) {
+        return { ...item, cor: novaCor }
+      }
+      return item
+    }))
+  }
+
+  const handleUpdateAllPagamento = (novaForma) => {
+    setFormaPagamentoGeral(novaForma)
+    setItensOrcamento(itensOrcamento.map(item => {
+      const precoUnit = getPrecoPorFormaPagamento(item.produtoRef, novaForma)
+      const numKg = parseFloat(item.kg.toString().replace(',', '.')) || 0
+      return {
+        ...item,
+        formaPagamento: novaForma,
+        precoUnitario: precoUnit,
+        totalItem: numKg * precoUnit
+      }
+    }))
   }
 
   const handleRemoveItemOrcamento = (id) => {
     setItensOrcamento(itensOrcamento.filter(item => item.id !== id))
   }
 
-  const totalGeralOrcamento = itensOrcamento.reduce((acc, curr) => acc + curr.totalItem, 0)
-  const totalKgOrcamento = itensOrcamento.reduce((acc, curr) => acc + curr.kg, 0)
+  const totalKgOrcamento = itensOrcamento.reduce((acc, curr) => acc + (parseFloat(curr.kg.toString().replace(',', '.')) || 0), 0)
+  const totalGeralOrcamento = itensOrcamento.reduce((acc, curr) => acc + ((parseFloat(curr.kg.toString().replace(',', '.')) || 0) * curr.precoUnitario), 0)
 
   const getNomeFormaPagamento = (forma) => {
     switch (forma) {
-      case 'a_vista': return 'À Vista'
-      case 'a_prazo': return 'À Prazo'
+      case 'a_vista': return 'À vista'
+      case 'a_prazo': return 'À prazo'
       case 'atacado_debito': return 'Atacado - Débito'
       case 'atacado_credito': return 'Atacado - Crédito'
       case 'varejo_avista': return 'Varejo - À Vista'
       case 'varejo_prazo': return 'Varejo - Prazo'
       case 'meia_avista': return 'Meia Peça - À Vista'
       case 'meia_prazo': return 'Meia Peça - Prazo'
-      default: return 'À Vista'
+      default: return 'À vista'
     }
   }
 
@@ -423,6 +417,8 @@ export default function App() {
 
       setItensOrcamento([])
       setClienteNome('')
+      setRepresentanteNome('')
+      setObservacoesOrcamento('')
       setIsOrcamentoOpen(false)
     } catch (error) {
       console.error(error)
@@ -548,7 +544,7 @@ export default function App() {
         />
       </div>
       
-      {/* HEADER PRINCIPAL COM CONTADORES E BOTÃO ORÇAMENTO EM VERDE MANATEX */}
+      {/* HEADER PRINCIPAL */}
       <header style={{ width: '100%', maxWidth: '900px', backgroundColor: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div style={{ display: 'flex', gap: '15px' }}>
           <div style={{ backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -860,87 +856,161 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL DE ORÇAMENTO GLOBAL & PDF */}
+      {/* TELA DE ORÇAMENTO (CARRINHO EXATAMENTE IGUAL ÀS IMAGENS RECENTES) */}
       {isOrcamentoOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+          <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '20px', width: '100%', maxWidth: '520px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 15px 35px rgba(0,0,0,0.2)', position: 'relative' }}>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-              <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Calculator size={22} color="#059669" /> Carrinho de Orçamentos
-              </h3>
-              <button onClick={() => setIsOrcamentoOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}><X size={22} /></button>
-            </div>
+            <button 
+              onClick={() => setIsOrcamentoOpen(false)} 
+              style={{ position: 'absolute', top: '20px', right: '20px', backgroundColor: '#e0f2fe', color: '#0284c7', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}
+            >
+              <X size={18} />
+            </button>
 
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Nome do Cliente (Opcional)</label>
+            <span style={{ fontSize: '10px', fontWeight: '800', color: '#166534', letterSpacing: '1px', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+              CONSULTA COMERCIAL
+            </span>
+            <h2 style={{ fontSize: '24px', color: '#0f172a', margin: '0 0 8px 0', fontWeight: 'bold' }}>
+              Seu orçamento
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '12px', lineHeight: '1.4', marginBottom: '20px' }}>
+              Adicione tecidos e cores diferentes. Cada cor aparece como um item com seu próprio peso.
+            </p>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Cliente (opcional)</label>
               <input
                 type="text"
-                placeholder="Ex: Confecções Silva"
+                placeholder="Nome ou razão social"
                 value={clienteNome}
                 onChange={(e) => setClienteNome(e.target.value)}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', backgroundColor: 'white' }}
               />
             </div>
 
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Representante (opcional)</label>
+              <input
+                type="text"
+                placeholder="Seu nome"
+                value={representanteNome}
+                onChange={(e) => setRepresentanteNome(e.target.value)}
+                style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box', backgroundColor: 'white' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Pagamento de todos os itens</label>
+              <select
+                value={formaPagamentoGeral}
+                onChange={(e) => handleUpdateAllPagamento(e.target.value)}
+                style={{ width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 'bold', backgroundColor: 'white' }}
+              >
+                <option value="a_vista">À vista</option>
+                <option value="a_prazo">À prazo</option>
+                {canViewStorePrices && (
+                  <>
+                    <option value="atacado_debito">Atacado - Débito (+3%)</option>
+                    <option value="atacado_credito">Atacado - Crédito (+3% a prazo)</option>
+                    <option value="varejo_avista">Varejo - À Vista (+30%)</option>
+                    <option value="varejo_prazo">Varejo - Prazo (+30% + 6%)</option>
+                    <option value="meia_avista">Meia Peça - À Vista (+15%)</option>
+                    <option value="meia_prazo">Meia Peça - Prazo (+15% + 6%)</option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            {/* LISTAGEM DE ITENS EM CARDS INDIVIDUAIS */}
             {itensOrcamento.length === 0 ? (
-              <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', margin: '30px 0' }}>
-                Nenhum produto adicionado ao orçamento. Abra a ficha de um produto para adicionar.
+              <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', margin: '20px 0' }}>
+                Nenhum produto no orçamento.
               </p>
             ) : (
-              <>
-                <div style={{ overflowX: 'auto', marginBottom: '15px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid #cbd5e1', textAlign: 'left' }}>
-                        <th style={{ padding: '8px' }}>Produto</th>
-                        <th style={{ padding: '8px' }}>Cor</th>
-                        <th style={{ padding: '8px' }}>Condição</th>
-                        <th style={{ padding: '8px' }}>Qtd (KG)</th>
-                        <th style={{ padding: '8px' }}>Preço/KG</th>
-                        <th style={{ padding: '8px' }}>Subtotal</th>
-                        <th style={{ padding: '8px', textAlign: 'center' }}>Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {itensOrcamento.map((item) => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                          <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.nome} <span style={{ fontSize: '10px', color: '#64748b' }}>({item.marca.toUpperCase()})</span></td>
-                          <td style={{ padding: '8px', color: '#475569' }}>{item.cor}</td>
-                          <td style={{ padding: '8px', fontSize: '11px', color: '#059669' }}>{getNomeFormaPagamento(item.formaPagamento)}</td>
-                          <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.kg.toLocaleString('pt-BR')} kg</td>
-                          <td style={{ padding: '8px' }}>{formatMoeda(item.precoUnitario)}</td>
-                          <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>{formatMoeda(item.totalItem)}</td>
-                          <td style={{ padding: '8px', textAlign: 'center' }}>
-                            <button onClick={() => handleRemoveItemOrcamento(item.id)} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer' }}>
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px' }}>
+                {itensOrcamento.map((item) => (
+                  <div key={item.id} style={{ border: '1px solid #cbd5e1', borderRadius: '12px', padding: '15px', backgroundColor: 'white', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                      <strong style={{ fontSize: '16px', color: '#0f172a' }}>{item.nome?.toUpperCase()}</strong>
+                      <button onClick={() => handleRemoveItemOrcamento(item.id)} style={{ border: 'none', background: 'none', color: '#dc2626', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        Remover
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 12px 0' }}>
+                      {item.marca?.toUpperCase()} • {formatMoeda(item.precoUnitario)}/kg
+                    </p>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px' }}>
-                  <div>
-                    <span style={{ fontSize: '11px', color: '#166534', display: 'block' }}>TOTAL DE PESO:</span>
-                    <strong style={{ fontSize: '14px', color: '#14532d' }}>{totalKgOrcamento.toLocaleString('pt-BR')} KG</strong>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '11px', color: '#166534', display: 'block' }}>TOTAL DO ORÇAMENTO:</span>
-                    <strong style={{ fontSize: '18px', color: '#059669' }}>{formatMoeda(totalGeralOrcamento)}</strong>
-                  </div>
-                </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#475569', marginBottom: '3px' }}>Cor</label>
+                        <input
+                          type="text"
+                          placeholder="Digite qualquer cor"
+                          value={item.cor}
+                          onChange={(e) => handleUpdateItemCor(item.id, e.target.value)}
+                          style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box', backgroundColor: 'white' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#475569', marginBottom: '3px' }}>Peso (kg)</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: 15"
+                          value={item.kg}
+                          onChange={(e) => handleUpdateItemKg(item.id, e.target.value)}
+                          style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box', backgroundColor: 'white', fontWeight: 'bold' }}
+                        />
+                      </div>
+                    </div>
 
-                <button
-                  onClick={handleExportOrcamentoPDF}
-                  style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 2px 6px rgba(5,150,105,0.3)' }}
-                >
-                  <Send size={18} /> Exportar e Enviar Orçamento em PDF
-                </button>
-              </>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '10px', fontSize: '13px' }}>
+                      <span style={{ color: '#64748b' }}>Subtotal</span>
+                      <strong style={{ color: '#059669', fontSize: '15px' }}>{formatMoeda(item.totalItem)}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
+
+            {/* CAIXA DE TOTAL DO ORÇAMENTO */}
+            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#166534', display: 'block' }}>Total do orçamento</span>
+                <span style={{ fontSize: '11px', color: '#166534' }}>{totalKgOrcamento.toLocaleString('pt-BR')} kg • {itensOrcamento.length} {itensOrcamento.length === 1 ? 'item' : 'itens'}</span>
+              </div>
+              <strong style={{ fontSize: '22px', color: '#059669' }}>{formatMoeda(totalGeralOrcamento)}</strong>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Observações (opcional)</label>
+              <textarea
+                placeholder="Informações adicionais do orçamento"
+                value={observacoesOrcamento}
+                onChange={(e) => setObservacoesOrcamento(e.target.value)}
+                rows={3}
+                style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '12px', boxSizing: 'border-box', backgroundColor: 'white', resize: 'vertical' }}
+              />
+            </div>
+
+            <p style={{ fontSize: '11px', color: '#64748b', lineHeight: '1.4', marginBottom: '20px' }}>
+              Adicione quantas cores quiser deste produto, informando um peso para cada cor. A cartela traz sugestões; você também pode digitar outras cores, sujeitas à confirmação comercial.<br/><br/>
+              Frete, estoque, entrega e validade a confirmar. Cálculo com preço/kg arredondado a duas casas decimais.
+            </p>
+
+            <button
+              onClick={handleExportOrcamentoPDF}
+              style={{ width: '100%', backgroundColor: '#0f172a', color: 'white', border: 'none', padding: '14px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(15,23,42,0.2)' }}
+            >
+              Gerar orçamento completo em PDF ↓
+            </button>
+
+            <button
+              onClick={() => setIsOrcamentoOpen(false)}
+              style={{ width: '100%', backgroundColor: 'white', color: '#059669', border: '1px solid #059669', padding: '12px', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}
+            >
+              Adicionar mais produtos
+            </button>
 
             {/* LAYOUT PARA GERAÇÃO DO PDF */}
             <div style={{ display: 'none' }}>
@@ -955,8 +1025,10 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '6px', fontSize: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '6px', fontSize: '12px' }}>
                   <div><strong>Cliente:</strong> {clienteNome || 'Cliente Não Informado'}</div>
+                  <div><strong>Representante:</strong> {representanteNome || 'Não Informado'}</div>
+                  <div style={{ gridColumn: 'span 2' }}><strong>Condição de Pagamento:</strong> {getNomeFormaPagamento(formaPagamentoGeral)}</div>
                 </div>
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', marginBottom: '15px' }}>
@@ -964,7 +1036,6 @@ export default function App() {
                     <tr style={{ backgroundColor: '#059669', color: 'white', textAlign: 'left' }}>
                       <th style={{ padding: '6px 8px' }}>Item / Tecido</th>
                       <th style={{ padding: '6px 8px' }}>Cor</th>
-                      <th style={{ padding: '6px 8px' }}>Condição</th>
                       <th style={{ padding: '6px 8px' }}>Qtd (KG)</th>
                       <th style={{ padding: '6px 8px' }}>Preço/KG</th>
                       <th style={{ padding: '6px 8px', textAlign: 'right' }}>Subtotal</th>
@@ -974,15 +1045,20 @@ export default function App() {
                     {itensOrcamento.map((item, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                         <td style={{ padding: '6px 8px', fontWeight: 'bold' }}>{item.nome} ({item.marca.toUpperCase()})</td>
-                        <td style={{ padding: '6px 8px' }}>{item.cor}</td>
-                        <td style={{ padding: '6px 8px' }}>{getNomeFormaPagamento(item.formaPagamento)}</td>
-                        <td style={{ padding: '6px 8px' }}>{item.kg.toLocaleString('pt-BR')} kg</td>
+                        <td style={{ padding: '6px 8px' }}>{item.cor || 'Padrão'}</td>
+                        <td style={{ padding: '6px 8px' }}>{item.kg} kg</td>
                         <td style={{ padding: '6px 8px' }}>{formatMoeda(item.precoUnitario)}</td>
                         <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{formatMoeda(item.totalItem)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+
+                {observacoesOrcamento && (
+                  <div style={{ marginBottom: '15px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '6px', fontSize: '11px' }}>
+                    <strong>Observações:</strong> {observacoesOrcamento}
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 15px', borderRadius: '6px' }}>
                   <div style={{ fontSize: '12px' }}><strong>Total de Peso:</strong> {totalKgOrcamento.toLocaleString('pt-BR')} KG</div>
