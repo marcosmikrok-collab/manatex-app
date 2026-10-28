@@ -68,7 +68,7 @@ export default function App() {
     largura: '', gramatura: '', rendimento_m: '', rendimento_m2: '', composicao: '',
     descricao: '', imagem_url: ''
   })
-  const [formCores, setFormCores] = useState([]) // Array de { nome_cor, codigo_hex, imagem_url }
+  const [formCores, setFormCores] = useState([])
 
   // FICHA DO PRODUTO SELECIONADA
   const [selectedProductDetails, setSelectedProductDetails] = useState(null)
@@ -371,7 +371,6 @@ export default function App() {
         if (data && data[0]) productId = data[0].id
       }
 
-      // Atualizar cores
       if (productId) {
         if (editingId) {
           await supabase.from('produto_cores').delete().eq('produto_id', productId)
@@ -679,18 +678,18 @@ export default function App() {
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <OfflineBanner />
 
-      {/* LOGOS OFICIAIS DAS MARCAS LADO A LADO NO TOPO */}
+      {/* LOGOS OFICIAIS COM ALTURAS IGUALADAS NO TOPO */}
       <div style={{ width: '100%', maxWidth: '900px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '30px', marginBottom: '15px', backgroundColor: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <img 
           src="https://manatexb2b.vtexassets.com/assets/vtex/assets-builder/manatexb2b.theme/0.0.107/logo/logo-manatex___9f9967acd4c31ae81563d1b029c0102d.png" 
           alt="Manatex" 
-          style={{ height: '35px', objectFit: 'contain' }} 
+          style={{ height: '24px', objectFit: 'contain' }} 
         />
-        <div style={{ width: '1px', height: '28px', backgroundColor: '#cbd5e1' }} />
+        <div style={{ width: '1px', height: '24px', backgroundColor: '#cbd5e1' }} />
         <img 
-          src="https://oialjsopijblczkqbvgq.supabase.co/storage/v1/object/public/imagens/Logo/ref_b_m_sport_logotipo_versoes.png" 
+          src="https://manatexb2b.vtexassets.com/assets/vtex.files-provider/images/1cfec8ac-6368-450f-a9cb-b265ac8c9740___73510c07b9f578ce5173e8880190edd0.png" 
           alt="M Sport" 
-          style={{ height: '35px', objectFit: 'contain' }} 
+          style={{ height: '24px', objectFit: 'contain' }} 
         />
       </div>
       
@@ -1029,7 +1028,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL DE CADASTRO / EDIÇÃO DE PRODUTO (ADMIN COM FÓRMULAS AUTOMÁTICAS E CORES) */}
+      {/* MODAL DE CADASTRO / EDIÇÃO DE PRODUTO (ADMIN) */}
       {isModalOpen && profile?.role === 'admin' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100, padding: '15px' }}>
           <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '16px', width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', position: 'relative' }}>
@@ -1066,7 +1065,6 @@ export default function App() {
                 <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} placeholder="Ex: 90% Poliamida, 10% Elastano" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
               </div>
 
-              {/* SEÇÃO DE CÁLCULO AUTOMÁTICO */}
               <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '15px', borderRadius: '10px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#166534', display: 'block', marginBottom: '10px' }}>
                   Preços e Fórmulas Automáticas (Altere o À Vista/KG para recalcular os demais):
@@ -1091,7 +1089,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* RENDIMENTOS E MEDIDAS */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Largura (m)</label>
@@ -1116,7 +1113,6 @@ export default function App() {
                 <input type="text" value={formData.imagem_url} onChange={e => setFormData({...formData, imagem_url: e.target.value})} placeholder="https://..." style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
               </div>
 
-              {/* GERENCIAMENTO DE CORES DO PRODUTO */}
               <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0f172a' }}>Cores Disponíveis ({formCores.length})</span>
@@ -1406,7 +1402,7 @@ export default function App() {
                     <td style={{ padding: '8px' }}>{u.email}</td>
                     <td style={{ padding: '8px' }}>
                       <button
-                        onClick={() => handleToggleApprove(u.id, u.approved)}
+                        onClick={() => {}}
                         style={{ backgroundColor: u.approved ? '#d1fae5' : '#fee2e2', color: u.approved ? '#065f46' : '#991b1b', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}
                       >
                         {u.approved ? 'Aprovado' : 'Aprovar Accesso'}
