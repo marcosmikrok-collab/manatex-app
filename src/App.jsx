@@ -687,7 +687,7 @@ export default function App() {
         />
         <div style={{ width: '1px', height: '24px', backgroundColor: '#cbd5e1' }} />
         <img 
-          src="https://manatexb2b.vtexassets.com/assets/vtex.files-provider/images/1cfec8ac-6368-450f-a9cb-b265ac8c9740___73510c07b9f578ce5173e8880190edd0.png" 
+          src="https://oialjsopijblczkqbvgq.supabase.co/storage/v1/object/public/imagens/Logo/ref_b_m_sport_logotipo_versoes.png" 
           alt="M Sport" 
           style={{ height: '24px', objectFit: 'contain' }} 
         />
