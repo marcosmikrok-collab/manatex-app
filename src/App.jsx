@@ -450,16 +450,17 @@ export default function App() {
     const total = kg * precoUnit
 
     const novoItem = {
-      id: Date.now(),
-      produtoId: selectedProductDetails.id,
-      nome: selectedProductDetails.nome,
-      marca: selectedProductDetails.marca,
-      cor: selectedCorOrcamento || '',
-      kg: kg,
-      formaPagamento: formaPagamentoOrcamento,
-      precoUnitario: precoUnit,
-      produtoRef: selectedProductDetails
-    }
+  id: Date.now(),
+  produtoId: selectedProductDetails.id,
+  nome: selectedProductDetails.nome,
+  marca: selectedProductDetails.marca,
+  cor: selectedCorOrcamento || '',
+  kg: kg,
+  formaPagamento: formaPagamentoOrcamento,
+  precoUnitario: precoUnit,
+  totalItem: total,
+  produtoRef: selectedProductDetails
+}
 
     setItensOrcamento([...itensOrcamento, novoItem])
     setSelectedProductDetails(null)
@@ -509,6 +510,8 @@ export default function App() {
 
   const totalKgOrcamento = itensOrcamento.reduce((acc, curr) => acc + (parseFloat(curr.kg.toString().replace(',', '.')) || 0), 0)
   const totalGeralOrcamento = itensOrcamento.reduce((acc, curr) => acc + ((parseFloat(curr.kg.toString().replace(',', '.')) || 0) * curr.precoUnitario), 0)
+  const calcSubtotal = (item) =>
+  (parseFloat(item.kg.toString().replace(',', '.')) || 0) * item.precoUnitario
 
   const getNomeFormaPagamento = (forma) => {
     switch (forma) {
@@ -1281,7 +1284,7 @@ export default function App() {
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '10px', fontSize: '13px' }}>
                       <span style={{ color: '#64748b' }}>Subtotal</span>
-                      <strong style={{ color: '#059669', fontSize: '15px' }}>{formatMoeda(item.totalItem)}</strong>
+                      <strong style={{ color: '#059669', fontSize: '15px' }}>{formatMoeda(calcSubtotal(item))}</strong>
                     </div>
                   </div>
                 ))}
@@ -1357,7 +1360,7 @@ export default function App() {
                         <td style={{ padding: '6px 8px' }}>{item.cor || 'Padrão'}</td>
                         <td style={{ padding: '6px 8px' }}>{item.kg} kg</td>
                         <td style={{ padding: '6px 8px' }}>{formatMoeda(item.precoUnitario)}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{formatMoeda(item.totalItem)}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{formatMoeda(calcSubtotal(item))}</td>
                       </tr>
                     ))}
                   </tbody>
