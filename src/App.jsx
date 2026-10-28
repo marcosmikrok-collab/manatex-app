@@ -688,7 +688,7 @@ export default function App() {
         />
         <div style={{ width: '1px', height: '28px', backgroundColor: '#cbd5e1' }} />
         <img 
-          src="msports.jpg" 
+          src="https://oialjsopijblczkqbvgq.supabase.co/storage/v1/object/public/imagens/Logo/ref_b_m_sport_logotipo_versoes.png" 
           alt="M Sport" 
           style={{ height: '35px', objectFit: 'contain' }} 
         />
