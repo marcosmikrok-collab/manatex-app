@@ -811,23 +811,6 @@ export default function App() {
             <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
           </div>
 
-          <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
-            {isRegistering ? 'Cadastrar' : 'Entrar'}
-          </button>
-
-          <div style={{ textAlign: 'center' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setIsRegistering(!isRegistering)
-                setAuthError('')
-                setAuthSuccess('')
-              }}
-              style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}
-            >
-              {isRegistering ? 'Já tem uma conta? Iniciar sessão' : 'Não tem conta? Criar cadastro'}
-            </button>
-          </div>
         </form>
       </div>
     )
