@@ -1562,3 +1562,404 @@ export default function App() {
                   <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m)}</td>
                   <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m2)}</td>
                   <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</td>
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.gramatura, 'g')}</td>
+                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.largura, 'm')}</td>
+                  <td style={{ padding: '10px', color: '#64748b' }}>{p.composicao || '-'}</td>
+                  <td style={{ padding: '10px', color: '#047857', fontWeight: 'bold' }}>{p.tecnologias || '-'}</td>
+                  {profile?.role === 'admin' && (
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                      <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', padding: '2px' }}>
+                        <Edit2 size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626', marginLeft: '6px', padding: '2px' }}>
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {isOrcamentoOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+              <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calculator size={22} color="#2563eb" /> Criar Orçamento de Venda
+              </h3>
+              <button onClick={() => setIsOrcamentoOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <X size={22} />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Nome do Cliente (Opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Confecções Silva"
+                  value={clienteNome}
+                  onChange={(e) => setClienteNome(e.target.value)}
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Forma / Condição de Pagamento</label>
+                <select
+                  value={formaPagamento}
+                  onChange={(e) => setFormaPagamento(e.target.value)}
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 'bold', boxSizing: 'border-box' }}
+                >
+                  <option value="a_vista">À Vista</option>
+                  <option value="a_prazo">À Prazo</option>
+                  {canViewStorePrices && (
+                    <>
+                      <option value="atacado_debito">Atacado - Débito (+3%)</option>
+                      <option value="atacado_credito">Atacado - Crédito (+3% a prazo)</option>
+                      <option value="varejo_avista">Varejo - À Vista (+30%)</option>
+                      <option value="varejo_prazo">Varejo - Prazo (+30% + 6%)</option>
+                      <option value="meia_avista">Meia Peça - À Vista (+15%)</option>
+                      <option value="meia_prazo">Meia Peça - Prazo (+15% + 6%)</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#eff6ff', padding: '12px', borderRadius: '8px', border: '1px solid #bfdbfe', marginBottom: '15px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e40af', display: 'block', marginBottom: '8px' }}>
+                + Adicionar Tecido ao Orçamento
+              </span>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', alignItems: 'end' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#1e3a8a' }}>Produto</label>
+                  <select
+                    value={selectedProdutoParaAdd}
+                    onChange={(e) => {
+                      setSelectedProdutoParaAdd(e.target.value)
+                      setSelectedCorParaAdd('')
+                    }}
+                    style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #93c5fd', fontSize: '12px', boxSizing: 'border-box' }}
+                  >
+                    <option value="">Selecione...</option>
+                    {allProducts.map(p => (
+                      <option key={p.id} value={p.id}>{p.nome} ({p.marca.toUpperCase()})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#1e3a8a' }}>Cor (Opcional)</label>
+                  <select
+                    value={selectedCorParaAdd}
+                    onChange={(e) => setSelectedCorParaAdd(e.target.value)}
+                    disabled={!produtoSelecionadoObj || !produtoSelecionadoObj.produto_cores?.length}
+                    style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #93c5fd', fontSize: '12px', boxSizing: 'border-box' }}
+                  >
+                    <option value="">Selecione a cor...</option>
+                    {produtoSelecionadoObj?.produto_cores?.map(c => (
+                      <option key={c.id} value={c.nome_cor}>{c.nome_cor}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#1e3a8a' }}>Quantidade (KG)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 25,5"
+                    value={qtdKgInput}
+                    onChange={(e) => setQtdKgInput(e.target.value)}
+                    style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #93c5fd', fontSize: '12px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddItemOrcamento}
+                  style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '7px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
+                >
+                  + Adicionar
+                </button>
+              </div>
+            </div>
+
+            {itensOrcamento.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', margin: '20px 0' }}>
+                Nenhum produto adicionado ao orçamento ainda.
+              </p>
+            ) : (
+              <>
+                <div style={{ overflowX: 'auto', marginBottom: '15px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid #cbd5e1', textAlign: 'left' }}>
+                        <th style={{ padding: '8px' }}>Produto</th>
+                        <th style={{ padding: '8px' }}>Cor</th>
+                        <th style={{ padding: '8px' }}>Qtd (KG)</th>
+                        <th style={{ padding: '8px' }}>Preço/KG</th>
+                        <th style={{ padding: '8px' }}>Subtotal</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }}>Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {itensOrcamento.map((item) => (
+                        <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.nome} <span style={{ fontSize: '10px', color: '#64748b' }}>({item.marca.toUpperCase()})</span></td>
+                          <td style={{ padding: '8px', color: '#475569' }}>{item.cor}</td>
+                          <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.kg.toLocaleString('pt-BR')} kg</td>
+                          <td style={{ padding: '8px' }}>{formatMoeda(item.precoUnitario)}</td>
+                          <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>{formatMoeda(item.totalItem)}</td>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>
+                            <button onClick={() => handleRemoveItemOrcamento(item.id)} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer' }}>
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#166534', display: 'block' }}>TOTAL DE PESO:</span>
+                    <strong style={{ fontSize: '14px', color: '#14532d' }}>{totalKgOrcamento.toLocaleString('pt-BR')} KG</strong>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '11px', color: '#166534', display: 'block' }}>TOTAL DO ORÇAMENTO:</span>
+                    <strong style={{ fontSize: '18px', color: '#059669' }}>{formatMoeda(totalGeralOrcamento)}</strong>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleExportOrcamentoPDF}
+                  style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 2px 6px rgba(5,150,105,0.3)' }}
+                >
+                  <Send size={18} /> Exportar e Enviar Orçamento em PDF
+                </button>
+              </>
+            )}
+
+            <div style={{ display: 'none' }}>
+              <div ref={orcamentoPdfRef} style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#ffffff', color: '#1e293b' }}>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #059669', paddingBottom: '12px', marginBottom: '15px' }}>
+                  <div>
+                    <h1 style={{ margin: 0, fontSize: '22px', color: '#059669', fontWeight: 'bold' }}>ORÇAMENTO DE VENDA</h1>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>Catálogo Manatex & MSport</p>
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: '11px', color: '#64748b' }}>
+                    <div>Data: {new Date().toLocaleDateString('pt-BR')}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '6px', fontSize: '12px' }}>
+                  <div><strong>Cliente:</strong> {clienteNome || 'Cliente Não Informado'}</div>
+                  <div><strong>Condição de Pagamento:</strong> {getNomeFormaPagamento(formaPagamento)}</div>
+                </div>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', marginBottom: '15px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#059669', color: 'white', textAlign: 'left' }}>
+                      <th style={{ padding: '6px 8px' }}>Item / Tecido</th>
+                      <th style={{ padding: '6px 8px' }}>Cor</th>
+                      <th style={{ padding: '6px 8px' }}>Qtd (KG)</th>
+                      <th style={{ padding: '6px 8px' }}>Preço/KG</th>
+                      <th style={{ padding: '6px 8px', textAlign: 'right' }}>Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itensOrcamento.map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                        <td style={{ padding: '6px 8px', fontWeight: 'bold' }}>{item.nome} ({item.marca.toUpperCase()})</td>
+                        <td style={{ padding: '6px 8px' }}>{item.cor}</td>
+                        <td style={{ padding: '6px 8px' }}>{item.kg.toLocaleString('pt-BR')} kg</td>
+                        <td style={{ padding: '6px 8px' }}>{formatMoeda(item.precoUnitario)}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{formatMoeda(item.totalItem)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 15px', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '12px' }}>
+                    <strong>Total de Peso:</strong> {totalKgOrcamento.toLocaleString('pt-BR')} KG
+                  </div>
+                  <div style={{ fontSize: '16px', color: '#059669', fontWeight: 'bold' }}>
+                    VALOR TOTAL: {formatMoeda(totalGeralOrcamento)}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '30px', textAlign: 'center', fontSize: '10px', color: '#94a3b8', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
+                  Este orçamento tem validade sujeita à confirmação de estoque e alteração de tabela sem aviso prévio.
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && profile?.role === 'admin' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '10px' }}>
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>{editingId ? 'Editar Produto' : 'Novo Produto'}</h3>
+              <button onClick={closeModal} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            
+            <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Nome do Produto</label>
+                <input type="text" required value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="Ex: AERODRY" />
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Foto Principal (URL)</label>
+                  <input type="text" value={formData.imagem_url} onChange={e => setFormData({...formData, imagem_url: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="https://..." />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>À Vista (R$)</label>
+                  <input type="text" value={formData.a_vista} onChange={handleAVistaChange} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', backgroundColor: '#f8fafc' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '8px' }}>
+                  Preços Calculados (Ajuste manual opcional)
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Atacado Débito (R$)</label>
+                    <input type="text" value={formData.atacado_cartao_debito} onChange={e => setFormData({...formData, atacado_cartao_debito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Atacado Crédito (R$)</label>
+                    <input type="text" value={formData.atacado_cartao_credito} onChange={e => setFormData({...formData, atacado_cartao_credito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Varejo À Vista/Débito (R$)</label>
+                    <input type="text" value={formData.varejo_avista_debito} onChange={e => setFormData({...formData, varejo_avista_debito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Varejo Prazo/Crédito (R$)</label>
+                    <input type="text" value={formData.varejo_prazo_credito} onChange={e => setFormData({...formData, varejo_prazo_credito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Meia Peça À Vista/Débito (R$)</label>
+                    <input type="text" value={formData.meia_peca_avista_debito} onChange={e => setFormData({...formData, meia_peca_avista_debito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold' }}>Meia Peça Prazo/Crédito (R$)</label>
+                    <input type="text" value={formData.meia_peca_prazo_credito} onChange={e => setFormData({...formData, meia_peca_prazo_credito: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Rendimento M (m)</label>
+                  <input type="text" value={formData.rendimento_m} onChange={handleRendimentoMChange} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Rendimento M² (m²)</label>
+                  <input type="text" value={formData.rendimento_m2} onChange={handleRendimentoM2Change} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="0,00" />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Largura (m)</label>
+                  <input type="text" value={formData.largura} onChange={e => setFormData({...formData, largura: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="1,60" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Gramatura (g)</label>
+                  <input type="text" value={formData.gramatura} onChange={e => setFormData({...formData, gramatura: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="135" />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold' }}>Composição</label>
+                <input type="text" value={formData.composicao} onChange={e => setFormData({...formData, composicao: e.target.value})} style={{ width: '100%', padding: '6px', boxSizing: 'border-box' }} placeholder="100% Poliéster" />
+              </div>
+
+              <div style={{ border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px', backgroundColor: '#f0fdf4' }}>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'block', marginBottom: '8px' }}>
+                  Atributos e Tecnologias
+                </span>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Tecnologias</label>
+                    <input type="text" value={formData.tecnologias} onChange={e => setFormData({...formData, tecnologias: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Conforto</label>
+                    <input type="text" value={formData.conforto_text} onChange={e => setFormData({...formData, conforto_text: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#14532d' }}>Versatilidade</label>
+                    <input type="text" value={formData.versatil_text} onChange={e => setFormData({...formData, versatil_text: e.target.value})} style={{ width: '100%', padding: '5px', fontSize: '11px', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', backgroundColor: '#f8fafc' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Palette size={14} /> Cores e Variantes
+                  </span>
+                  <button type="button" onClick={addCorField} style={{ backgroundColor: '#059669', color: 'white', border: 'none', padding: '3px 6px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>
+                    + Cor
+                  </button>
+                </div>
+
+                {formCores.map((cor, index) => (
+                  <div key={index} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+                    <input
+                      type="text"
+                      placeholder="Nome cor"
+                      value={cor.nome_cor}
+                      onChange={(e) => handleCorChange(index, 'nome_cor', e.target.value)}
+                      style={{ flex: '2', padding: '4px', fontSize: '11px' }}
+                    />
+                    <input
+                      type="color"
+                      value={cor.codigo_hex || '#000000'}
+                      onChange={(e) => handleCorChange(index, 'codigo_hex', e.target.value)}
+                      style={{ width: '30px', height: '26px', padding: 0, border: 'none', cursor: 'pointer' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="URL Foto da cor"
+                      value={cor.imagem_url}
+                      onChange={(e) => handleCorChange(index, 'imagem_url', e.target.value)}
+                      style={{ flex: '3', padding: '4px', fontSize: '11px' }}
+                    />
+                    <button type="button" onClick={() => removeCorField(index)} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer' }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button type="submit" style={{ backgroundColor: brandColor, color: 'white', border: 'none', padding: '8px', borderRadius: '5px', fontWeight: 'bold', marginTop: '8px', cursor: 'pointer' }}>
+                {editingId ? 'Atualizar Produto' : 'Cadastrar Produto'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
