@@ -994,10 +994,10 @@ export default function App() {
                         )}
                       </div>
 
-                      {(p.tecnologias || p.conforto_text || p.versatil_text) && (
+{(p.tecnologias || p.conforto_text || p.versatil_text) && (
                         <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 15px', margin: '15px 0' }}>
                           <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', marginBottom: '6px' }}>
-                            <Sparkles size={14} /> Características e Tecnologias
+                            <Sparkles size={14} /> CARACTERÍSTICAS E TECNOLOGIAS — {p.nome?.toUpperCase()}{selectedColorName}
                           </span>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#14532d' }}>
                             {p.tecnologias && <div><strong>Tecnologias:</strong> {p.tecnologias}</div>}
