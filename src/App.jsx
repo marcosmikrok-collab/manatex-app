@@ -960,58 +960,35 @@ export default function App() {
                         <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>{p.descricao}</p>
                       </div>
 
-                      {/* IMAGEM + LISTA DE CORES AO LADO */}
-                      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', gap: '20px', margin: '15px 0', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          {currentImage ? (
-                            <img src={currentImage} alt={p.nome} style={{ maxHeight: '220px', maxWidth: '220px', objectFit: 'contain', borderRadius: '8px' }} />
-                          ) : (
-                            <div style={{ width: '160px', height: '140px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                              <ImageIcon size={32} />
-                            </div>
-                          )}
-                        </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '15px 0' }}>
+                        {currentImage ? (
+                          <img src={currentImage} alt={p.nome} style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
+                        ) : (
+                          <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                            <ImageIcon size={28} />
+                          </div>
+                        )}
 
                         {p.produto_cores && p.produto_cores.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: '170px', maxWidth: '260px' }}>
+                          <div style={{ marginTop: '15px', textAlign: 'center' }}>
                             <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
-                              {p.produto_cores.map((cor) => {
-                                const isSelected = selectedColorObj?.id === cor.id
-                                return (
-                                  <button
-                                    key={cor.id}
-                                    onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor })}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '8px',
-                                      padding: '5px 10px',
-                                      borderRadius: '8px',
-                                      backgroundColor: isSelected ? '#ecfdf5' : '#f8fafc',
-                                      border: isSelected ? '1.5px solid #059669' : '1px solid #e2e8f0',
-                                      cursor: 'pointer',
-                                      textAlign: 'left',
-                                      width: '100%'
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        width: '18px',
-                                        height: '18px',
-                                        borderRadius: '50%',
-                                        backgroundColor: cor.codigo_hex || '#000',
-                                        border: '1.5px solid white',
-                                        boxShadow: '0 0 0 1px #94a3b8',
-                                        flexShrink: 0
-                                      }}
-                                    />
-                                    <span style={{ fontSize: '12px', fontWeight: isSelected ? 'bold' : '500', color: isSelected ? '#065f46' : '#334155' }}>
-                                      {cor.nome_cor}
-                                    </span>
-                                  </button>
-                                )
-                              })}
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                              {p.produto_cores.map((cor) => (
+                                <button
+                                  key={cor.id}
+                                  onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor })}
+                                  title={cor.nome_cor}
+                                  style={{ 
+                                    width: '24px', 
+                                    height: '24px', 
+                                    borderRadius: '50%', 
+                                    backgroundColor: cor.codigo_hex || '#000', 
+                                    border: selectedColorObj?.id === cor.id ? '3px solid #059669' : '2px solid white', 
+                                    boxShadow: '0 0 0 1px #cbd5e1', 
+                                    cursor: 'pointer' 
+                                  }}
+                                />
+                              ))}
                             </div>
                           </div>
                         )}
