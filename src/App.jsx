@@ -941,6 +941,11 @@ export default function App() {
                 const meiaAvista = p.meia_peca_avista_debito || (p.a_vista ? p.a_vista * 1.15 : null)
                 const meiaPrazo = p.meia_peca_prazo_credito || (meiaAvista ? meiaAvista * 1.06 : null)
 
+                // Montar lista de nomes de cores separadas por vírgula para exibir no título
+                const nomesCoresStr = p.produto_cores && p.produto_cores.length > 0 
+                  ? ` — ${p.produto_cores.map(c => c.nome_cor).join(', ')}` 
+                  : ''
+
                 return (
                   <div key={p.id} style={{ backgroundColor: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative', pageBreakAfter: 'always' }}>
                     
@@ -959,58 +964,36 @@ export default function App() {
                         <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>{p.descricao}</p>
                       </div>
 
-                      {/* IMAGEM + LISTA DE CORES AO LADO */}
-                      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', gap: '20px', margin: '15px 0', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          {currentImage ? (
-                            <img src={currentImage} alt={p.nome} style={{ maxHeight: '220px', maxWidth: '220px', objectFit: 'contain', borderRadius: '8px' }} />
-                          ) : (
-                            <div style={{ width: '160px', height: '140px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                              <ImageIcon size={32} />
-                            </div>
-                          )}
-                        </div>
+                      {/* IMAGEM + BOLINHAS DE CORES ABAIXO DA FOTO */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '15px 0' }}>
+                        {currentImage ? (
+                          <img src={currentImage} alt={p.nome} style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
+                        ) : (
+                          <div style={{ width: '120px', height: '90px', backgroundColor: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                            <ImageIcon size={28} />
+                          </div>
+                        )}
 
                         {p.produto_cores && p.produto_cores.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: '170px', maxWidth: '260px' }}>
+                          <div style={{ marginTop: '15px', textAlign: 'center' }}>
                             <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', display: 'block', marginBottom: '8px' }}>CORES DISPONÍVEIS:</span>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
-                              {p.produto_cores.map((cor) => {
-                                const isSelected = selectedColorObj?.id === cor.id
-                                return (
-                                  <button
-                                    key={cor.id}
-                                    onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor })}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '8px',
-                                      padding: '5px 10px',
-                                      borderRadius: '8px',
-                                      backgroundColor: isSelected ? '#ecfdf5' : '#f8fafc',
-                                      border: isSelected ? '1.5px solid #059669' : '1px solid #e2e8f0',
-                                      cursor: 'pointer',
-                                      textAlign: 'left',
-                                      width: '100%'
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        width: '18px',
-                                        height: '18px',
-                                        borderRadius: '50%',
-                                        backgroundColor: cor.codigo_hex || '#000',
-                                        border: '1.5px solid white',
-                                        boxShadow: '0 0 0 1px #94a3b8',
-                                        flexShrink: 0
-                                      }}
-                                    />
-                                    <span style={{ fontSize: '12px', fontWeight: isSelected ? 'bold' : '500', color: isSelected ? '#065f46' : '#334155' }}>
-                                      {cor.nome_cor}
-                                    </span>
-                                  </button>
-                                )
-                              })}
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                              {p.produto_cores.map((cor) => (
+                                <button
+                                  key={cor.id}
+                                  onClick={() => setSelectedColorsMap({ ...selectedColorsMap, [p.id]: cor })}
+                                  title={cor.nome_cor}
+                                  style={{ 
+                                    width: '24px', 
+                                    height: '24px', 
+                                    borderRadius: '50%', 
+                                    backgroundColor: cor.codigo_hex || '#000', 
+                                    border: selectedColorObj?.id === cor.id ? '3px solid #059669' : '2px solid white', 
+                                    boxShadow: '0 0 0 1px #cbd5e1', 
+                                    cursor: 'pointer' 
+                                  }}
+                                />
+                              ))}
                             </div>
                           </div>
                         )}
@@ -1019,7 +1002,7 @@ export default function App() {
                       {(p.tecnologias || p.conforto_text || p.versatil_text) && (
                         <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 15px', margin: '15px 0' }}>
                           <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center', gap: '4px', textTransform: 'uppercase', marginBottom: '6px' }}>
-                            <Sparkles size={14} /> CARACTERÍSTICAS E TECNOLOGIAS — {p.nome?.toUpperCase()}
+                            <Sparkles size={14} /> CARACTERÍSTICAS E TECNOLOGIAS — {p.nome?.toUpperCase()}{nomesCoresStr}
                           </span>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#14532d' }}>
                             {p.tecnologias && <div><strong>Tecnologias:</strong> {p.tecnologias}</div>}
@@ -1875,356 +1858,6 @@ export default function App() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-
-  return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
-      <OfflineBanner />
-      <header style={{ backgroundColor: brandColor, color: 'white', padding: '12px 15px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', marginTop: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button onClick={() => setSelectedBrand(null)} style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}>
-            <ArrowLeft size={18} />
-          </button>
-          <h1 style={{ margin: 0, fontSize: '16px' }}>Tabela {selectedBrand?.toUpperCase()}</h1>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            onClick={() => setIsOrcamentoOpen(true)} 
-            style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
-          >
-            <Calculator size={14} /> Orçamento {itensOrcamento.length > 0 && `(${itensOrcamento.length})`}
-          </button>
-
-          {profile?.role === 'admin' && (
-            <button onClick={() => openModal()} style={{ backgroundColor: 'white', color: isManatex ? '#059669' : '#111827', border: 'none', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-              <Plus size={14} /> Novo Produto
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div style={{ marginBottom: '15px', position: 'relative' }}>
-        <Search size={18} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
-        <input
-          type="text"
-          placeholder="Filtrar por tecido ou composição (Ex: Active, Cotton)..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: '100%', padding: '8px 12px 8px 38px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }}
-        />
-      </div>
-
-      <div style={{ backgroundColor: 'white', borderRadius: '8px', overflowX: 'auto', width: '100%', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-          <thead>
-            <tr style={{ backgroundColor: brandColor, color: 'white', textAlign: 'left' }}>
-              <th style={{ padding: '10px' }}>Produto</th>
-              <th style={{ padding: '10px' }}>Cores</th>
-              <th style={{ padding: '10px' }}>À Vista</th>
-              <th style={{ padding: '10px' }}>À Prazo</th>
-              {canViewStorePrices && (
-                <>
-                  <th style={{ padding: '10px', color: '#f3e8ff' }}>Atac. Débito</th>
-                  <th style={{ padding: '10px', color: '#f3e8ff' }}>Atac. Crédito</th>
-                  <th style={{ padding: '10px', color: '#ffedd5' }}>Varejo À Vista</th>
-                  <th style={{ padding: '10px', color: '#ffedd5' }}>Varejo Prazo</th>
-                  <th style={{ padding: '10px', color: '#dbeafe' }}>Meia Peça À Vista</th>
-                  <th style={{ padding: '10px', color: '#dbeafe' }}>Meia Peça Prazo</th>
-                </>
-              )}
-              <th style={{ padding: '10px' }}>Valor M</th>
-              <th style={{ padding: '10px' }}>Valor M²</th>
-              <th style={{ padding: '10px' }}>Rend. M</th>
-              <th style={{ padding: '10px' }}>Rend. M²</th>
-              <th style={{ padding: '10px' }}>Gramatura</th>
-              <th style={{ padding: '10px' }}>Largura</th>
-              <th style={{ padding: '10px' }}>Composição</th>
-              <th style={{ padding: '10px' }}>Tecnologias</th>
-              {profile?.role === 'admin' && <th style={{ padding: '10px', textAlign: 'center' }}>Ações</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {(searchTerm.trim() ? filtrarProdutosPorTermos(products, searchTerm) : products).map((p, idx) => {
-              const atacadoDebito = p.atacado_cartao_debito || (p.a_vista ? p.a_vista * 1.03 : null)
-              const atacadoCredito = p.atacado_cartao_credito || (p.a_prazo ? p.a_prazo * 1.03 : null)
-              const varejoAvista = p.varejo_avista_debito || (p.a_vista ? p.a_vista * 1.30 : null)
-              const varejoPrazo = p.varejo_prazo_credito || (varejoAvista ? varejoAvista * 1.06 : null)
-              const meiaAvista = p.meia_peca_avista_debito || (p.a_vista ? p.a_vista * 1.15 : null)
-              const meiaPrazo = p.meia_peca_prazo_credito || (meiaAvista ? meiaAvista * 1.06 : null)
-
-              return (
-                <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#0f172a' }}>{p.nome}</td>
-                  <td style={{ padding: '10px' }}>
-                    <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', maxWidth: '60px' }}>
-                      {p.produto_cores?.map((c) => (
-                        <span key={c.id} title={c.nome_cor} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: c.codigo_hex, border: '1px solid #cbd5e1', display: 'inline-block' }} />
-                      ))}
-                    </div>
-                  </td>
-                  <td style={{ padding: '10px', color: '#059669', fontWeight: 'bold' }}>{formatMoeda(p.a_vista)}</td>
-                  <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.a_prazo)}</td>
-                  {canViewStorePrices && (
-                    <>
-                      <td style={{ padding: '10px', color: '#7e22ce', fontWeight: 'bold' }}>{formatMoeda(atacadoDebito)}</td>
-                      <td style={{ padding: '10px', color: '#7e22ce', fontWeight: 'bold' }}>{formatMoeda(atacadoCredito)}</td>
-                      <td style={{ padding: '10px', color: '#c2410c', fontWeight: 'bold' }}>{formatMoeda(varejoAvista)}</td>
-                      <td style={{ padding: '10px', color: '#c2410c', fontWeight: 'bold' }}>{formatMoeda(varejoPrazo)}</td>
-                      <td style={{ padding: '10px', color: '#1d4ed8', fontWeight: 'bold' }}>{formatMoeda(meiaAvista)}</td>
-                      <td style={{ padding: '10px', color: '#1d4ed8', fontWeight: 'bold' }}>{formatMoeda(meiaPrazo)}</td>
-                    </>
-                  )}
-                  <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m)}</td>
-                  <td style={{ padding: '10px', color: '#334155' }}>{formatMoeda(p.valor_m2)}</td>
-                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m, 'm')}</td>
-                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.rendimento_m2, 'm²')}</td>
-                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.gramatura, 'g')}</td>
-                  <td style={{ padding: '10px', color: '#334155' }}>{formatNumero(p.largura, 'm')}</td>
-                  <td style={{ padding: '10px', color: '#64748b' }}>{p.composicao || '-'}</td>
-                  <td style={{ padding: '10px', color: '#047857', fontWeight: 'bold' }}>{p.tecnologias || '-'}</td>
-                  {profile?.role === 'admin' && (
-                    <td style={{ padding: '10px', textAlign: 'center' }}>
-                      <button onClick={() => openModal(p)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#2563eb', padding: '2px' }}>
-                        <Edit2 size={14} />
-                      </button>
-                      <button onClick={() => handleDelete(p.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#dc2626', marginLeft: '6px', padding: '2px' }}>
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {isOrcamentoOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-              <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Calculator size={22} color="#2563eb" /> Criar Orçamento de Venda
-              </h3>
-              <button onClick={() => setIsOrcamentoOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>
-                <X size={22} />
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Nome do Cliente (Opcional)</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Confecções Silva"
-                  value={clienteNome}
-                  onChange={(e) => setClienteNome(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>Forma / Condição de Pagamento</label>
-                <select
-                  value={formaPagamento}
-                  onChange={(e) => setFormaPagamento(e.target.value)}
-                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 'bold', boxSizing: 'border-box' }}
-                >
-                  <option value="a_vista">À Vista</option>
-                  <option value="a_prazo">À Prazo</option>
-                  {canViewStorePrices && (
-                    <>
-                      <option value="atacado_debito">Atacado - Débito (+3%)</option>
-                      <option value="atacado_credito">Atacado - Crédito (+3% a prazo)</option>
-                      <option value="varejo_avista">Varejo - À Vista (+30%)</option>
-                      <option value="varejo_prazo">Varejo - Prazo (+30% + 6%)</option>
-                      <option value="meia_avista">Meia Peça - À Vista (+15%)</option>
-                      <option value="meia_prazo">Meia Peça - Prazo (+15% + 6%)</option>
-                    </>
-                  )}
-                </select>
-              </div>
-            </div>
-
-            <div style={{ backgroundColor: '#eff6ff', padding: '12px', borderRadius: '8px', border: '1px solid #bfdbfe', marginBottom: '15px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e40af', display: 'block', marginBottom: '8px' }}>
-                + Adicionar Tecido ao Orçamento
-              </span>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', alignItems: 'end' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#1e3a8a' }}>Produto</label>
-                  <select
-                    value={selectedProdutoParaAdd}
-                    onChange={(e) => {
-                      setSelectedProdutoParaAdd(e.target.value)
-                      setSelectedCorParaAdd('')
-                    }}
-                    style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #93c5fd', fontSize: '12px', boxSizing: 'border-box' }}
-                  >
-                    <option value="">Selecione...</option>
-                    {allProducts.map(p => (
-                      <option key={p.id} value={p.id}>{p.nome} ({p.marca.toUpperCase()})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#1e3a8a' }}>Cor (Opcional)</label>
-                  <select
-                    value={selectedCorParaAdd}
-                    onChange={(e) => setSelectedCorParaAdd(e.target.value)}
-                    disabled={!produtoSelecionadoObj || !produtoSelecionadoObj.produto_cores?.length}
-                    style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #93c5fd', fontSize: '12px', boxSizing: 'border-box' }}
-                  >
-                    <option value="">Selecione a cor...</option>
-                    {produtoSelecionadoObj?.produto_cores?.map(c => (
-                      <option key={c.id} value={c.nome_cor}>{c.nome_cor}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', color: '#1e3a8a' }}>Quantidade (KG)</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: 25,5"
-                    value={qtdKgInput}
-                    onChange={(e) => setQtdKgInput(e.target.value)}
-                    style={{ width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #93c5fd', fontSize: '12px', boxSizing: 'border-box' }}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAddItemOrcamento}
-                  style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '7px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
-                >
-                  + Adicionar
-                </button>
-              </div>
-            </div>
-
-            {itensOrcamento.length === 0 ? (
-              <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '13px', margin: '20px 0' }}>
-                Nenhum produto adicionado ao orçamento ainda.
-              </p>
-            ) : (
-              <>
-                <div style={{ overflowX: 'auto', marginBottom: '15px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '2px solid #cbd5e1', textAlign: 'left' }}>
-                        <th style={{ padding: '8px' }}>Produto</th>
-                        <th style={{ padding: '8px' }}>Cor</th>
-                        <th style={{ padding: '8px' }}>Qtd (KG)</th>
-                        <th style={{ padding: '8px' }}>Preço/KG</th>
-                        <th style={{ padding: '8px' }}>Subtotal</th>
-                        <th style={{ padding: '8px', textAlign: 'center' }}>Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {itensOrcamento.map((item) => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                          <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.nome} <span style={{ fontSize: '10px', color: '#64748b' }}>({item.marca.toUpperCase()})</span></td>
-                          <td style={{ padding: '8px', color: '#475569' }}>{item.cor}</td>
-                          <td style={{ padding: '8px', fontWeight: 'bold' }}>{item.kg.toLocaleString('pt-BR')} kg</td>
-                          <td style={{ padding: '8px' }}>{formatMoeda(item.precoUnitario)}</td>
-                          <td style={{ padding: '8px', fontWeight: 'bold', color: '#059669' }}>{formatMoeda(item.totalItem)}</td>
-                          <td style={{ padding: '8px', textAlign: 'center' }}>
-                            <button onClick={() => handleRemoveItemOrcamento(item.id)} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer' }}>
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px 15px', borderRadius: '8px', marginBottom: '15px' }}>
-                  <div>
-                    <span style={{ fontSize: '11px', color: '#166534', display: 'block' }}>TOTAL DE PESO:</span>
-                    <strong style={{ fontSize: '14px', color: '#14532d' }}>{totalKgOrcamento.toLocaleString('pt-BR')} KG</strong>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '11px', color: '#166534', display: 'block' }}>TOTAL DO ORÇAMENTO:</span>
-                    <strong style={{ fontSize: '18px', color: '#059669' }}>{formatMoeda(totalGeralOrcamento)}</strong>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleExportOrcamentoPDF}
-                  style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 2px 6px rgba(5,150,105,0.3)' }}
-                >
-                  <Send size={18} /> Exportar e Enviar Orçamento em PDF
-                </button>
-              </>
-            )}
-
-            <div style={{ display: 'none' }}>
-              <div ref={orcamentoPdfRef} style={{ padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#ffffff', color: '#1e293b' }}>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #059669', paddingBottom: '12px', marginBottom: '15px' }}>
-                  <div>
-                    <h1 style={{ margin: 0, fontSize: '22px', color: '#059669', fontWeight: 'bold' }}>Manatex Textil</h1>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>Orçamento</p>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: '11px', color: '#64748b' }}>
-                    <div>Data: {new Date().toLocaleDateString('pt-BR')}</div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', backgroundColor: '#f8fafc', padding: '10px', borderRadius: '6px', fontSize: '12px' }}>
-                  <div><strong>Cliente:</strong> {clienteNome || 'Cliente Não Informado'}</div>
-                  <div><strong>Condição de Pagamento:</strong> {getNomeFormaPagamento(formaPagamento)}</div>
-                </div>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', marginBottom: '15px' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#059669', color: 'white', textAlign: 'left' }}>
-                      <th style={{ padding: '6px 8px' }}>Item / Tecido</th>
-                      <th style={{ padding: '6px 8px' }}>Cor</th>
-                      <th style={{ padding: '6px 8px' }}>Qtd (KG)</th>
-                      <th style={{ padding: '6px 8px' }}>Preço/KG</th>
-                      <th style={{ padding: '6px 8px', textAlign: 'right' }}>Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {itensOrcamento.map((item, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                        <td style={{ padding: '6px 8px', fontWeight: 'bold' }}>{item.nome} ({item.marca.toUpperCase()})</td>
-                        <td style={{ padding: '6px 8px' }}>{item.cor}</td>
-                        <td style={{ padding: '6px 8px' }}>{item.kg.toLocaleString('pt-BR')} kg</td>
-                        <td style={{ padding: '6px 8px' }}>{formatMoeda(item.precoUnitario)}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 'bold' }}>{formatMoeda(item.totalItem)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '10px 15px', borderRadius: '6px' }}>
-                  <div style={{ fontSize: '12px' }}>
-                    <strong>Total de Peso:</strong> {totalKgOrcamento.toLocaleString('pt-BR')} KG
-                  </div>
-                  <div style={{ fontSize: '16px', color: '#059669', fontWeight: 'bold' }}>
-                    VALOR TOTAL: {formatMoeda(totalGeralOrcamento)}
-                  </div>
-                </div>
-
-                <div style={{ marginTop: '30px', textAlign: 'center', fontSize: '10px', color: '#94a3b8', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-                  Este orçamento tem validade sujeita à confirmação de estoque e alteração de tabela sem aviso prévio.
-                </div>
-
-              </div>
-            </div>
-
           </div>
         </div>
       )}
