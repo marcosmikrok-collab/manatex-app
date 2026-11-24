@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
-import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download, WifiOff, FileText, ShoppingBag, Calculator, Send } from 'lucide-react'
+import { Search, Plus, Edit2, Trash2, X, LogOut, Lock, ArrowLeft, Image as ImageIcon, Palette, Sparkles, ShieldAlert, UserPlus, Users, Download, WifiOff, FileText, Calculator, Send } from 'lucide-react'
 
 const formatMoeda = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '-'
@@ -191,7 +191,7 @@ export default function App() {
 
   const fetchUserProfile = async (userId) => {
     try {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
       if (data) {
         setProfile(data)
         localStorage.setItem('cache_user_profile', JSON.stringify(data))
@@ -373,7 +373,6 @@ export default function App() {
 
   const canViewStorePrices = profile?.role === 'admin' || profile?.role === 'loja'
 
-  // LÓGICA DE ORÇAMENTO (Respeitando permissão de preços)
   const getPrecoPorFormaPagamento = (prod, forma) => {
     if (!prod) return 0
     const aVista = prod.a_vista || 0
@@ -689,7 +688,7 @@ export default function App() {
       }
 
       closeModal()
-      await fetchAllProducts(true) // Atualiza forçando nova busca e salvando cache limpo
+      await fetchAllProducts(true)
     } catch (err) {
       alert('Ocorreu um erro ao guardar.')
     }
@@ -946,7 +945,6 @@ export default function App() {
                 const meiaAvista = p.meia_peca_avista_debito || (p.a_vista ? p.a_vista * 1.15 : null)
                 const meiaPrazo = p.meia_peca_prazo_credito || (meiaAvista ? meiaAvista * 1.06 : null)
 
-                // Montar lista de nomes de cores separadas por vírgula para exibir no título
                 const nomesCoresStr = p.produto_cores && p.produto_cores.length > 0 
                   ? ` — ${p.produto_cores.map(c => c.nome_cor).join(', ')}` 
                   : ''
@@ -969,7 +967,6 @@ export default function App() {
                         <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>{p.descricao}</p>
                       </div>
 
-                      {/* IMAGEM + BOLINHAS DE CORES ABAIXO DA FOTO */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '15px 0' }}>
                         {currentImage ? (
                           <img src={currentImage} alt={p.nome} style={{ maxHeight: '200px', maxWidth: '100%', objectFit: 'contain', borderRadius: '8px' }} />
@@ -1148,7 +1145,6 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE GERAR ORÇAMENTO */}
         {isOrcamentoOpen && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
@@ -1445,8 +1441,8 @@ export default function App() {
           </div>
         )}
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
