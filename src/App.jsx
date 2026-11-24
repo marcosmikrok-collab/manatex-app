@@ -264,35 +264,30 @@ export default function App() {
     }
   }, [session, profile])
 
-  const fetchProducts = async () => {
-    if (!selectedBrand) return
-    setLoading(true)
+  // BUSCA INTELIGENTE COM CACHE LOCAL (Poupando tráfego no Supabase)
+  const fetchAllProducts = async (forcarAtualizacao = false) => {
     try {
-      const searchTermBrand = selectedBrand.toLowerCase() === 'msport' ? 'msport' : selectedBrand
+      const cacheKey = 'cache_all_products_v2'
+      const cacheTimeKey = 'cache_all_products_time'
+      
+      const cachedData = localStorage.getItem(cacheKey)
+      const cachedTime = localStorage.getItem(cacheTimeKey)
+      const agora = new Date().getTime()
 
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*, produto_cores(*)')
-        .or(`marca.ilike.%${searchTermBrand}%,marca.ilike.%msports%`)
-        .order('id', { ascending: true })
-
-      if (error) throw error
-
-      if (data) {
-        setProducts(data)
-        localStorage.setItem(`cache_products_${selectedBrand}`, JSON.stringify(data))
+      if (cachedData && cachedTime && !forcarAtualizacao && (agora - parseInt(cachedTime) < 30 * 60 * 1000)) {
+        const parsed = JSON.parse(cachedData)
+        setAllProducts(parsed)
+        setLoading(false)
+        return
       }
-    } catch (err) {
-      const savedBrandProducts = localStorage.getItem(`cache_products_${selectedBrand}`)
-      if (savedBrandProducts) {
-        setProducts(JSON.parse(savedBrandProducts))
-      }
-    }
-    setLoading(false)
-  }
 
-  const fetchAllProducts = async () => {
-    try {
+      if (isOffline) {
+        if (cachedData) setAllProducts(JSON.parse(cachedData))
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
       const { data, error } = await supabase
         .from('produtos')
         .select('*, produto_cores(*)')
@@ -302,22 +297,35 @@ export default function App() {
 
       if (data) {
         setAllProducts(data)
-        localStorage.setItem('cache_all_products', JSON.stringify(data))
+        localStorage.setItem(cacheKey, JSON.stringify(data))
+        localStorage.setItem(cacheTimeKey, agora.toString())
       }
     } catch (err) {
-      const savedProducts = localStorage.getItem('cache_all_products')
-      if (savedProducts) {
-        setAllProducts(JSON.parse(savedProducts))
-      }
+      console.error('Erro ao buscar produtos:', err)
+      const savedProducts = localStorage.getItem('cache_all_products_v2')
+      if (savedProducts) setAllProducts(JSON.parse(savedProducts))
+    } finally {
+      setLoading(false)
     }
   }
+
+  // Filtragem local por marca baseada na lista em cache
+  useEffect(() => {
+    if (selectedBrand && allProducts.length > 0) {
+      const searchTermBrand = selectedBrand.toLowerCase() === 'msport' ? 'msport' : selectedBrand
+      const filtrados = allProducts.filter(p => {
+        const marcaP = p.marca?.toLowerCase() || ''
+        return marcaP.includes(searchTermBrand) || marcaP.includes('msports')
+      })
+      setProducts(filtrados)
+    }
+  }, [selectedBrand, allProducts])
 
   useEffect(() => {
     if (session && profile?.approved) {
       fetchAllProducts()
-      if (selectedBrand) fetchProducts()
     }
-  }, [session, profile, selectedBrand])
+  }, [session, profile])
 
   const handleAuth = async (e) => {
     e.preventDefault()
@@ -371,7 +379,6 @@ export default function App() {
     const aVista = prod.a_vista || 0
     const aPrazo = prod.a_prazo || (aVista * 1.06)
 
-    // Se for perfil comum ('user'), só pode ver À Vista ou À Prazo básico
     if (!canViewStorePrices) {
       if (forma === 'a_prazo') return aPrazo
       return aVista
@@ -682,8 +689,7 @@ export default function App() {
       }
 
       closeModal()
-      fetchProducts()
-      fetchAllProducts()
+      await fetchAllProducts(true) // Atualiza forçando nova busca e salvando cache limpo
     } catch (err) {
       alert('Ocorreu um erro ao guardar.')
     }
@@ -697,8 +703,7 @@ export default function App() {
 
     if (confirm("Pretende eliminar este produto?")) {
       await supabase.from('produtos').delete().eq('id', id)
-      fetchProducts()
-      fetchAllProducts()
+      await fetchAllProducts(true)
     }
   }
 
@@ -810,7 +815,7 @@ export default function App() {
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold' }}>Palavra-passe</label>
             <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
           </div>
-          
+
           <button type="submit" style={{ width: '100%', backgroundColor: '#059669', color: 'white', border: 'none', padding: '12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
             {isRegistering ? 'Cadastrar' : 'Entrar'}
           </button>
@@ -828,7 +833,6 @@ export default function App() {
               {isRegistering ? 'Já tem uma conta? Iniciar sessão' : 'Não tem conta? Criar cadastro'}
             </button>
           </div>
-          
         </form>
       </div>
     )
@@ -1144,7 +1148,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODAL DE GERAR ORÇAMENTO (Restrito por perfil e sem pix/boleto/faturado) */}
+        {/* MODAL DE GERAR ORÇAMENTO */}
         {isOrcamentoOpen && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '15px' }}>
             <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
@@ -1441,8 +1445,8 @@ export default function App() {
           </div>
         )}
       </div>
-    )
-  }
+    </div>
+  )
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f6f8', minHeight: '100vh', padding: '10px' }}>
